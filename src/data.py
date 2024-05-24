@@ -1,5 +1,5 @@
 from sklearn import datasets
-from src.manifold import Torus
+from src.manifold import Torus, Hyperboloid
 import numpy as np
 # Data generation functions
 
@@ -70,3 +70,26 @@ def torus(n_points, noise, r=1, R=2):
     color = np.array(color)
     torus += noise * np.random.randn(*torus.shape)
     return torus, color
+
+def hyperboloid(n_points, noise):
+    """ 
+    Generate a hyperboloid dataset.
+    Parameters
+    ----------
+    n_points : int
+        The number of points to generate.
+    noise : float
+        The standard deviation of the Gaussian noise.
+    Returns
+    -------
+    hyperboloid : array-like, shape (n_points, 3)
+        The generated hyperboloid.
+    color : array-like, shape (n_points,)
+        The color of each point.
+    """
+    B = 10
+    hyperboloid = Hyperboloid.sample(n_points, c=2, a=2, B=10)
+    color = Hyperboloid.S((1/B)* hyperboloid[:, 2])
+    color = np.array(color)
+    hyperboloid += noise * np.random.randn(*hyperboloid.shape)
+    return hyperboloid, color
