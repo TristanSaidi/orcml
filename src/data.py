@@ -1,5 +1,6 @@
 from sklearn import datasets
-
+from src.manifold import Torus
+import numpy as np
 # Data generation functions
 
 def concentric_circles(n_samples, factor, noise):
@@ -47,3 +48,25 @@ def swiss_roll(n_points, noise, dim=3):
     if dim == 2:
         swiss_roll = swiss_roll[:, [0, 2]]
     return swiss_roll, color
+
+def torus(n_points, noise, r=1, R=2):
+    """
+    Generate a 2-torus dataset.
+    Parameters
+    ----------
+    n_points : int
+        The number of points to generate.
+    noise : float
+        The standard deviation of the Gaussian noise.
+    Returns
+    -------
+    torus : array-like, shape (n_points, 3)
+        The generated torus.
+    color : array-like, shape (n_points,)
+        The color of each point.
+    """
+    torus, thetas = Torus.sample(N=n_points, r=r, R=R)
+    color = Torus.exact_curvatures(thetas, r, R)
+    color = np.array(color)
+    torus += noise * np.random.randn(*torus.shape)
+    return torus, color
