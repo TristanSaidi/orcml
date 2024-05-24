@@ -1,11 +1,11 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import networkx as nx
-
+import os
 
 # plotting functions
 
-def plot_data_2D(X, y, title):
+def plot_data_2D(X, y, title, exp_name=None, filename=None):
     """
     Plot the data with the points colored by class membership.
     Parameters
@@ -22,9 +22,14 @@ def plot_data_2D(X, y, title):
     plt.title(title)
     plt.gca().set_aspect('equal')
     plt.gca().set_axis_off()
-    plt.show()
+    if filename is not None and exp_name is not None:
+        os.makedirs('figures', exist_ok=True)
+        exp_dir = os.path.join('figures', exp_name)
+        os.makedirs(exp_dir, exist_ok=True)
+        path = os.path.join(exp_dir, filename)
+        plt.savefig(path)
 
-def plot_graph_2D(X, graph, title, node_color='#1f78b4', edge_color='lightgray', node_size=10, colorbar=False):
+def plot_graph_2D(X, graph, title, node_color='#1f78b4', edge_color='lightgray', node_size=10, colorbar=False, exp_name=None, filename=None):
     """
     Plot the graph with the desired node or edge coloring.
     Parameters
@@ -47,9 +52,14 @@ def plot_graph_2D(X, graph, title, node_color='#1f78b4', edge_color='lightgray',
         sm = plt.cm.ScalarMappable(cmap=plt.cm.coolwarm, norm=plt.Normalize(vmin=0, vmax=1))
         sm._A = []
         plt.colorbar(sm)
-    plt.show()
+    if filename is not None and exp_name is not None:
+        os.makedirs('figures', exist_ok=True)
+        exp_dir = os.path.join('figures', exp_name)
+        os.makedirs(exp_dir, exist_ok=True)
+        path = os.path.join(exp_dir, filename)
+        plt.savefig(path)
 
-def plot_emb(Y, color, title):
+def plot_emb(Y, color, title, exp_name=None, filename=None):
     """
     Plot the embedding of the data.
     Parameters
@@ -66,3 +76,9 @@ def plot_emb(Y, color, title):
     plt.title(title)
     plt.gca().set_axis_off()
     plt.show()
+    if filename is not None and exp_name is not None:
+        os.makedirs('figures', exist_ok=True)
+        exp_dir = os.path.join('figures', exp_name)
+        os.makedirs(exp_dir, exist_ok=True)
+        path = os.path.join(exp_dir, filename)
+        plt.savefig(path)
