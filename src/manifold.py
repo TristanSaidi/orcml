@@ -117,7 +117,7 @@ class Torus:
         curvatures = [Torus.S_exact(theta, r, R) for theta in thetas]
         return curvatures
 
-    def sample(N, r, R):
+    def sample(N, r, R, double=False):
         psis = [np.random.random()*2*math.pi for i in range(N)]
         j = 0
         thetas = []
@@ -137,6 +137,21 @@ class Torus:
             return [x, y, z]
     
         X = np.array([embed_torus(thetas[i], psis[i]) for i in range(N)])
+
+        if double:
+            # randomly pick half of points to rotate and offset
+            indices = np.random.choice(N, N//2, replace=False)
+            for i in indices:
+                # rotate by pi/2 about x-axis
+                x = X[i, 0]
+                y = X[i, 1]
+                z = X[i, 2]
+                X[i, 0] = x
+                X[i, 1] = z
+                X[i, 2] = -y
+                # offset
+                X[i, 0] += R
+
         return X, np.array(thetas)
     
     def S_exact(theta, r, R):
