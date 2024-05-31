@@ -115,7 +115,7 @@ def plot_graph_3D(X, graph, title, node_color='#1f78b4', edge_color='lightgrey',
         x=edge_x, y=edge_y, z=edge_z,
         mode='lines',
         line=dict(
-            width=0.1 if isinstance(edge_color, str) else 1,
+            width=0.5 if isinstance(edge_color, str) else 1,
             color=np.repeat(edge_color, 3),
             colorscale='Spectral_r',
             colorbar=dict(
