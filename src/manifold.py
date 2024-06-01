@@ -151,8 +151,12 @@ class Torus:
                 X[i, 2] = -y
                 # offset
                 X[i, 0] += R
+            # get one-hot encoding of which points were rotated
+            rotated = np.zeros(N)
+            rotated[indices] = 1
+            return X, np.array(thetas), rotated
 
-        return X, np.array(thetas)
+        return X, np.array(thetas), None
     
     def S_exact(theta, r, R):
         # Analytic scalar curvature
@@ -275,7 +279,7 @@ class Hyperboloid:
     def det_g(a, c, u):
         return (a**4)*(u**2) + a**2*(u**2 + 1)*c**2
     
-    def sample(N, a = 2, c = 1, B = 2, within_halfB = True):
+    def sample(N, a = 2, c = 1, B = 2, within_halfB = True, double=False):
         # if within_halfB = False, then sample N points from the hyperboloid with u in [-B, B]
         # if within_halfB = True, then sample points uniformly from u in [-B, B] until there are at least N points with u in [-.5B, .5B]
         sqrt_max_det_g = math.sqrt(Hyperboloid.det_g(a, c, B))
@@ -296,8 +300,19 @@ class Hyperboloid:
         xs = [a*math.cos(thetas[i])*math.sqrt(u**2 + 1) for i, u in enumerate(us)]
         ys = [a*math.sin(thetas[i])*math.sqrt(u**2 + 1) for i, u in enumerate(us)]
         zs = [c*u for i, u in enumerate(us)]
+
         X = np.array([[x, ys[i], zs[i]] for i, x in enumerate(xs)])
-        return X
+        if double:
+            # scale half of points to create a second hyperboloid
+            indices = np.random.choice(N, N//2, replace=False)
+            for i in indices:
+                X[i, 0] *= 0.6
+                X[i, 1] *= 0.6
+            # get one-hot encoding of which points were scaled
+            scaled = np.zeros(N)
+            scaled[indices] = 1
+            return X, scaled
+        return X, None
 
     def area(a, c, B):
         alpha = math.sqrt(c**2 + a**2)/(c**2)
