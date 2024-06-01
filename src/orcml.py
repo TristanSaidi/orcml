@@ -93,7 +93,7 @@ def graph_orc(G, weight='weight', alpha=0.5):
     return orc.G, adjusted_orcs
 
 
-def prune(G, threshold, X, color):
+def prune(G, threshold, X, color, cluster=None):
     """
     Prune the graph based on a threshold. Adjust the node coordinates and colors accordingly.
     Parameters
@@ -109,12 +109,23 @@ def prune(G, threshold, X, color):
     """
     G_pruned = nx.Graph()
     preserved_nodes = set()
+    
+    # bookkeeping
+    num_removed_edges = 0
+    total_bad_edges = 0
+    num_bad_edges_removed = 0 # edges with vertices in different clusters (if cluster is not None)
+
     for i, j, d in G.edges(data=True):
+        total_bad_edges += 1 if cluster is not None and cluster[i] != cluster[j] else 0
         if d['ricciCurvature'] > threshold:
             G_pruned.add_edge(i, j, weight=d['weight'])
             preserved_nodes.add(i)
             preserved_nodes.add(j)
             G_pruned[i][j]['ricciCurvature'] = d['ricciCurvature']
+        else:
+            num_removed_edges += 1
+            if cluster is not None and cluster[i] != cluster[j]:
+                num_bad_edges_removed += 1
     
     preserved_orcs = []
     for i, j, d in G_pruned.edges(data=True):
@@ -123,7 +134,11 @@ def prune(G, threshold, X, color):
     X_pruned = X[list(preserved_nodes)]
     color_pruned = color[list(preserved_nodes)]
     
-    print(f'Percentage of edges preserved: {len(G_pruned.edges) / len(G.edges)}')
+    print(f'{num_removed_edges} of {len(G.edges())} total edges were removed.')
+    if cluster is not None:
+        print(f'{num_bad_edges_removed} of {num_removed_edges} removed edges were bad edges.')
+        print(f'{num_bad_edges_removed} of {total_bad_edges} total bad edges were removed.')
+    
     return {
         'G_pruned': G_pruned,
         'preserved_nodes': preserved_nodes,
