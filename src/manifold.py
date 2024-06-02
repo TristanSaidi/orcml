@@ -298,14 +298,19 @@ class Hyperboloid:
     def det_g(a, c, u):
         return (a**4)*(u**2) + a**2*(u**2 + 1)*c**2
     
-    def sample(N, a = 2, c = 1, B = 2, within_halfB = True, double=False):
+    def sample(N, a = 2, c = 1, B = 2, within_halfB = True, double=False, supersample=False, supersample_factor=2.5):
         # if within_halfB = False, then sample N points from the hyperboloid with u in [-B, B]
         # if within_halfB = True, then sample points uniformly from u in [-B, B] until there are at least N points with u in [-.5B, .5B]
+        if supersample:
+            N_total = int(N*supersample_factor)
+            subsample_indices = np.random.choice(N_total, N, replace=False)
+        else:
+            N_total = N
         sqrt_max_det_g = math.sqrt(Hyperboloid.det_g(a, c, B))
         us = []
         thetas = []
         i = 0
-        while i < N:
+        while i < N_total:
             theta = 2*math.pi*np.random.random()
             u = 2*B*np.random.random() - B
             eta = sqrt_max_det_g*np.random.random()
@@ -323,15 +328,23 @@ class Hyperboloid:
         X = np.array([[x, ys[i], zs[i]] for i, x in enumerate(xs)])
         if double:
             # scale half of points to create a second hyperboloid
-            indices = np.random.choice(N, N//2, replace=False)
+            indices = np.random.choice(N_total, N_total//2, replace=False)
             for i in indices:
                 X[i, 0] *= 0.6
                 X[i, 1] *= 0.6
             # get one-hot encoding of which points were scaled
-            scaled = np.zeros(N)
+            scaled = np.zeros(N_total)
             scaled[indices] = 1
-            return X, scaled
-        return X, None
+        else:
+            scaled = None
+        if supersample:
+            X_supersample = X.copy()
+            X = X[subsample_indices]
+            scaled = scaled[subsample_indices]
+        else:
+            X_supersample = None
+            subsample_indices = None
+        return X, scaled, X_supersample, subsample_indices
 
     def area(a, c, B):
         alpha = math.sqrt(c**2 + a**2)/(c**2)

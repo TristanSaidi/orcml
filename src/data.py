@@ -73,7 +73,7 @@ def torus(n_points, noise, r=1.5, R=5, double=False, supersample=False, supersam
     torus += noise * np.random.randn(*torus.shape)
     return torus, color, cluster, torus_subsample, subsample_indices
 
-def hyperboloid(n_points, noise, double=False):
+def hyperboloid(n_points, noise, double=False, supersample=False, supersample_factor=2.5):
     """ 
     Generate a hyperboloid dataset.
     Parameters
@@ -89,8 +89,8 @@ def hyperboloid(n_points, noise, double=False):
     color : array-like, shape (n_points,)
         The color of each point.
     """
-    hyperboloid, cluster = Hyperboloid.sample(n_points, double=double)
+    hyperboloid, cluster, hyperboloid_subsample, subsample_indices = Hyperboloid.sample(n_points, double=double, supersample=supersample, supersample_factor=supersample_factor)
     color = Hyperboloid.S(hyperboloid[:, 2]) # curvature (proxy) for color
     color = np.array(color)
     hyperboloid += noise * np.random.randn(*hyperboloid.shape)
-    return hyperboloid, color, cluster
+    return hyperboloid, color, cluster, hyperboloid_subsample, subsample_indices
