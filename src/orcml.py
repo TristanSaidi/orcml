@@ -2,6 +2,7 @@ import networkx as nx
 from GraphRicciCurvature.OllivierRicci import OllivierRicci
 from sklearn import neighbors
 import numpy as np
+import multiprocessing as mp
 
 # method
 
@@ -144,5 +145,6 @@ def prune(G, threshold, X, color, cluster=None):
         'preserved_nodes': preserved_nodes,
         'X_pruned': X_pruned,
         'color_pruned': color_pruned,
-        'preserved_orcs': preserved_orcs
+        'preserved_orcs': preserved_orcs,
+        'preserved_indices': list(preserved_nodes)
     }

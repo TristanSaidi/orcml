@@ -117,11 +117,21 @@ class Torus:
         curvatures = [Torus.S_exact(theta, r, R) for theta in thetas]
         return curvatures
 
-    def sample(N, r, R, double=False):
-        psis = [np.random.random()*2*math.pi for i in range(N)]
+    def sample(N, r, R, double=False, supersample=False, supersample_factor=2.5):
+        # N: number of points, r: minor radius, R: major radius
+        # double: if True, return a second torus with half of the points rotated and offset
+        # supersample: if True, sample N*supersample_factor points. Likely to be used for accurate geodesic distance computation
+
+        if supersample:
+            N_total = int(N*supersample_factor)
+            subsample_indices = np.random.choice(N_total, N, replace=False)
+        else:
+            N_total = N
+
+        psis = [np.random.random()*2*math.pi for i in range(N_total)]
         j = 0
         thetas = []
-        while j < N:
+        while j < N_total:
             theta = np.random.random()*2*math.pi
             #eta = np.random.random()*2*(r/R) + 1 - (r/R)
             #if eta < 1 + (r/R)*math.cos(theta):
@@ -136,11 +146,11 @@ class Torus:
             z = r*math.sin(theta)
             return [x, y, z]
     
-        X = np.array([embed_torus(thetas[i], psis[i]) for i in range(N)])
+        X = np.array([embed_torus(thetas[i], psis[i]) for i in range(N_total)])
 
         if double:
             # randomly pick half of points to rotate and offset
-            indices = np.random.choice(N, N//2, replace=False)
+            indices = np.random.choice(N_total, N_total//2, replace=False)
             for i in indices:
                 # rotate by pi/2 about x-axis
                 x = X[i, 0]
@@ -152,11 +162,20 @@ class Torus:
                 # offset
                 X[i, 0] += R
             # get one-hot encoding of which points were rotated
-            rotated = np.zeros(N)
+            rotated = np.zeros(N_total)
             rotated[indices] = 1
-            return X, np.array(thetas), rotated
-
-        return X, np.array(thetas), None
+        else:
+            rotated = None
+        
+        if supersample:
+            X_supersample = X.copy()
+            X = X[subsample_indices]
+            thetas = [thetas[i] for i in subsample_indices]
+            rotated = rotated[subsample_indices]
+        else:
+            X_supersample = None
+            subsample_indices = None
+        return X, np.array(thetas), rotated, X_supersample, subsample_indices
     
     def S_exact(theta, r, R):
         # Analytic scalar curvature

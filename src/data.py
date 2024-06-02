@@ -49,7 +49,7 @@ def swiss_roll(n_points, noise, dim=3):
         swiss_roll = swiss_roll[:, [0, 2]]
     return swiss_roll, color
 
-def torus(n_points, noise, r=1, R=2, double=False):
+def torus(n_points, noise, r=1.5, R=5, double=False, supersample=False, supersample_factor=2.5):
     """
     Generate a 2-torus dataset.
     Parameters
@@ -67,11 +67,11 @@ def torus(n_points, noise, r=1, R=2, double=False):
     """
     if double and R <= 2*r:
         raise Warning("Double torii will intersect")
-    torus, thetas, cluster = Torus.sample(N=n_points, r=r, R=R, double=double)
+    torus, thetas, cluster, torus_subsample, subsample_indices = Torus.sample(N=n_points, r=r, R=R, double=double, supersample=supersample, supersample_factor=supersample_factor)
     color = Torus.exact_curvatures(thetas, r, R)
     color = np.array(color)
     torus += noise * np.random.randn(*torus.shape)
-    return torus, color, cluster
+    return torus, color, cluster, torus_subsample, subsample_indices
 
 def hyperboloid(n_points, noise, double=False):
     """ 
