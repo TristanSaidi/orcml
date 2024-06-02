@@ -4,6 +4,8 @@ import networkx as nx
 import os
 import plotly.graph_objs as go
 
+from src.eval_utils import *
+
 
 # plotting functions
 
@@ -171,6 +173,45 @@ def plot_emb(Y, color, title, cmap=plt.cm.Spectral, exp_name=None, filename=None
     plt.title(title)
     plt.gca().set_axis_off()
     plt.show()
+    if filename is not None and exp_name is not None:
+        os.makedirs('figures', exist_ok=True)
+        exp_dir = os.path.join('figures', exp_name)
+        os.makedirs(exp_dir, exist_ok=True)
+        path = os.path.join(exp_dir, filename)
+        plt.savefig(path)
+
+
+def plot_intercluster_distances(A, A_pruned, cluster, node_indices=None, exp_name=None, filename=None):
+    """ 
+    Plot histogram of inter-cluster distances of unpruned and pruned graph.
+    Parameters
+    ----------
+    A : np.array
+        Adjacency matrix of unpruned graph.
+    A_pruned : np.array
+        Adjacency matrix of pruned graph.   
+    cluster : np.array
+        (shuffled) Cluster labels.
+    node_indices : list
+        List of node indices for unshuffling (Optional). 
+    """
+    if node_indices is not None:
+        cluster = cluster[node_indices]
+    # num of clusters
+    n_clusters = len(np.unique(cluster))
+    cluster_indices = []
+    for i in range(n_clusters):
+        cluster_indices.append(np.where(cluster == i)[0])
+ 
+    # compute estimated geodesic distances
+    cluster_geo_distances = intercluster_distances(A, cluster_indices)
+    cluster_geo_distances_pruned = intercluster_distances(A_pruned, cluster_indices)
+    # plot histogram
+    plt.hist([cluster_geo_distances, cluster_geo_distances_pruned], label=['unpruned', 'pruned'], bins=100, density=True)
+    plt.legend()
+    plt.xlabel('Estimated geodesic distance')
+    plt.ylabel('Density')
+    plt.title('Inter-cluster geodesic distances')
     if filename is not None and exp_name is not None:
         os.makedirs('figures', exist_ok=True)
         exp_dir = os.path.join('figures', exp_name)
