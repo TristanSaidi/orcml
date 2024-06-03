@@ -49,11 +49,11 @@ def plot_graph_2D(X, graph, title, node_color='#1f78b4', edge_color='lightgray',
     edge_color : str
         The color of the edges.
     """
-    nx.draw(graph, X, node_color=node_color, edge_color=edge_color, node_size=node_size, cmap=plt.cm.Spectral, edge_cmap=plt.cm.coolwarm, edge_vmin=0, edge_vmax=1)
+    nx.draw(graph, X, node_color=node_color, edge_color=edge_color, node_size=node_size, cmap=plt.cm.Spectral, edge_cmap=plt.cm.coolwarm, edge_vmin=-1, edge_vmax=1)
     plt.title(title)
     plt.gca().set_aspect('equal')
     if colorbar:
-        sm = plt.cm.ScalarMappable(cmap=plt.cm.coolwarm, norm=plt.Normalize(vmin=0, vmax=1))
+        sm = plt.cm.ScalarMappable(cmap=plt.cm.coolwarm, norm=plt.Normalize(vmin=-1, vmax=1))
         sm._A = []
         plt.colorbar(sm)
     if filename is not None and exp_name is not None:
@@ -126,7 +126,7 @@ def plot_graph_3D(X, graph, title, node_color='#1f78b4', edge_color='lightgrey',
                 xanchor='left',
                 titleside='right',
             ) if colorbar else None,
-            cmin=0,
+            cmin=-1,
             cmax=1,
         ),
     )

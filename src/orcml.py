@@ -46,7 +46,7 @@ def make_prox_graph(X, mode='nbrs', n_neighbors=None, epsilon=None):
     return G, A
 
 
-def adjust_orcs(orcs):
+def adjust_orcs(orcs, clip=False):
     """
     Adjust the Ollivier-Ricci curvatures to lie within 2 standard deviations of the mean.
     Parameters
@@ -61,8 +61,12 @@ def adjust_orcs(orcs):
     orcs = np.array(orcs)
     mean = np.mean(orcs)
     std = np.std(orcs)
-    adjusted_orcs = np.clip(orcs, mean - 2*std, mean + 2*std)
-    adjusted_orcs = (adjusted_orcs - adjusted_orcs.min()) / (adjusted_orcs.max() - adjusted_orcs.min())
+    
+    ref_min = mean - 2*std
+    ref_max = mean + 2*std
+    # clip the Ollivier-Ricci curvatures to lie within 2 standard deviations of the mean
+    adjusted_orcs = np.clip(orcs, ref_min, ref_max) if clip else orcs
+    adjusted_orcs = (adjusted_orcs - mean) / std # convert to z-scores
     return adjusted_orcs
 
 def graph_orc(G, weight='weight', alpha=0.5):
