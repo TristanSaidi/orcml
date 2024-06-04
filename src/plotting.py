@@ -223,8 +223,6 @@ def plot_intercluster_distances(A, A_pruned, cluster, bins=20, node_indices=None
 def histogram(data, title, xlabel, ylabel, legend=None, bins=20, exp_name=None, filename=None):
     """
     Plot a histogram of the data.
-    Parameters
-    ----------
     """
     plt.figure()
     plt.hist(data, bins, density=True);
@@ -233,6 +231,27 @@ def histogram(data, title, xlabel, ylabel, legend=None, bins=20, exp_name=None, 
     plt.ylabel(ylabel)
     if legend is not None:
         plt.legend(legend)
+    if filename is not None and exp_name is not None:
+        os.makedirs('figures', exist_ok=True)
+        exp_dir = os.path.join('figures', exp_name)
+        os.makedirs(exp_dir, exist_ok=True)
+        path = os.path.join(exp_dir, filename)
+        plt.savefig(path)
+
+def plot_line_graph(x, y, title, xlabel, ylabel, legend=None, std=None, exp_name=None, filename=None):
+    """
+    Plot a line graph with the given parameters.
+    """
+    sns.set_theme()
+    plt.figure()
+    plt.plot(x, y)
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    if legend:
+        plt.legend(legend)
+    if std is not None:
+        plt.fill_between(x, y - std, y + std, alpha=0.2)
     if filename is not None and exp_name is not None:
         os.makedirs('figures', exist_ok=True)
         exp_dir = os.path.join('figures', exp_name)
