@@ -40,6 +40,8 @@ def concentric_circles(n_samples, factor, noise, supersample=False, supersample_
         circles_supersample = circles.copy()
         circles = circles[subsample_indices]
         cluster = cluster[subsample_indices]
+    else:
+        circles_supersample = None
     circles += noise * np.random.randn(*circles.shape)
     return circles, cluster, circles_supersample, subsample_indices
 
