@@ -3,12 +3,12 @@ from src.manifold import Torus, Hyperboloid
 import numpy as np
 # Data generation functions
 
-def concentric_circles(n_samples, factor, noise, supersample=False, supersample_factor=2.5):
+def concentric_circles(n_points, factor, noise, supersample=False, supersample_factor=2.5):
     """ 
     Generate concentric circles with noise. 
     Parameters
     
-    n_samples : int
+    n_points : int
         The number of samples to generate.
     factor : float
         The scaling factor between the circles.
@@ -20,20 +20,21 @@ def concentric_circles(n_samples, factor, noise, supersample=False, supersample_
         The factor by which to supersample the circles.
     Returns
     -------
-    circles : array-like, shape (n_samples, 2)
-        The generated samples.
-    cluster : array-like, shape (n_samples,)
-        The integer labels for class membership of each sample.
-    circles_supersample : array-like, shape (n_samples*supersample_factor, 2)
-        The supersampled circles.
-    subsample_indices : list
-        The indices of the subsampled circles.
+    Dictionary providing the following keys:
+        data : array-like, shape (n_points, 2)
+            The generated samples.
+        cluster : array-like, shape (n_points,)
+            The integer labels for class membership of each sample.
+        data_supersample : array-like, shape (n_points*supersample_factor, 2)
+            The supersampled circles.
+        subsample_indices : list
+            The indices of the subsampled circles.
     """
     if supersample:
-        N_total = int(n_samples * supersample_factor)
-        subsample_indices = np.random.choice(N_total, n_samples, replace=False)
+        N_total = int(n_points * supersample_factor)
+        subsample_indices = np.random.choice(N_total, n_points, replace=False)
     else:
-        N_total = n_samples
+        N_total = n_points
         subsample_indices = None
     circles, cluster = datasets.make_circles(n_samples=N_total, factor=factor)
     if supersample:
@@ -43,7 +44,13 @@ def concentric_circles(n_samples, factor, noise, supersample=False, supersample_
     else:
         circles_supersample = None
     circles += noise * np.random.randn(*circles.shape)
-    return circles, cluster, circles_supersample, subsample_indices
+    return_dict = {
+        'data': circles,
+        'cluster': cluster,
+        'data_supersample': circles_supersample,
+        'subsample_indices': subsample_indices
+    }
+    return return_dict
 
 def swiss_roll(n_points, noise, dim=3, supersample=False, supersample_factor=2.5):
     """
@@ -56,16 +63,20 @@ def swiss_roll(n_points, noise, dim=3, supersample=False, supersample_factor=2.5
         The standard deviation of the Gaussian noise.
     Returns
     -------
-    swiss_roll : array-like, shape (n_points, dim)
-        The generated Swiss roll.
-    color : array-like, shape (n_points,)
-        The color of each point.
-    dim: int
-        The dimension of the Swiss roll.
+    Dictionary providing the following keys:
+        swiss_roll : array-like, shape (n_points, dim)
+            The generated Swiss roll.
+        color : array-like, shape (n_points,)
+            The color of each point.
+        dim: int
+            The dimension of the Swiss roll.
     """
     if supersample:
         N_total = int(n_points * supersample_factor)
         subsample_indices = np.random.choice(N_total, n_points, replace=False)
+    else:
+        N_total = n_points
+        subsample_indices = None
     swiss_roll, color = datasets.make_swiss_roll(N_total)
     if dim == 2:
         swiss_roll = swiss_roll[:, [0, 2]]
@@ -77,7 +88,13 @@ def swiss_roll(n_points, noise, dim=3, supersample=False, supersample_factor=2.5
         swiss_roll_supersample = None
         subsample_indices = None
     swiss_roll += noise * np.random.randn(*swiss_roll.shape)
-    return swiss_roll, color, swiss_roll_supersample, subsample_indices
+    return_dict = {
+        'data': swiss_roll,
+        'cluster': color,
+        'data_supersample': swiss_roll_supersample,
+        'subsample_indices': subsample_indices
+    }
+    return return_dict
 
 def torus(n_points, noise, r=1.5, R=5, double=False, supersample=False, supersample_factor=2.5):
     """
@@ -107,7 +124,14 @@ def torus(n_points, noise, r=1.5, R=5, double=False, supersample=False, supersam
     color = Torus.exact_curvatures(thetas, r, R)
     color = np.array(color)
     torus += noise * np.random.randn(*torus.shape)
-    return torus, color, cluster, torus_subsample, subsample_indices
+    return_dict = {
+        'data': torus,
+        'cluster': cluster,
+        'color': color,
+        'data_supersample': torus_subsample,
+        'subsample_indices': subsample_indices
+    }
+    return return_dict
 
 def hyperboloid(n_points, noise, double=False, supersample=False, supersample_factor=2.5):
     """ 
@@ -129,4 +153,11 @@ def hyperboloid(n_points, noise, double=False, supersample=False, supersample_fa
     color = Hyperboloid.S(hyperboloid[:, 2]) # curvature (proxy) for color
     color = np.array(color)
     hyperboloid += noise * np.random.randn(*hyperboloid.shape)
-    return hyperboloid, color, cluster, hyperboloid_subsample, subsample_indices
+    return_dict = {
+        'data': hyperboloid,
+        'cluster': cluster,
+        'color': color,
+        'data_supersample': hyperboloid_subsample,
+        'subsample_indices': subsample_indices
+    }
+    return return_dict
