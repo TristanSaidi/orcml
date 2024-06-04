@@ -166,13 +166,13 @@ def plot_emb(Y, color, title, cmap=plt.cm.Spectral, exp_name=None, filename=None
     title : str
         The title of the plot.
     """
+    plt.figure()
     if Y.shape[1] == 1:
         plt.scatter(Y, np.zeros(Y.shape), c=color, cmap=cmap, s=10)
     else:
         plt.scatter(Y[:, 0], Y[:, 1], c=color, cmap=cmap, s=10)
     plt.title(title)
     plt.gca().set_axis_off()
-    plt.show()
     if filename is not None and exp_name is not None:
         os.makedirs('figures', exist_ok=True)
         exp_dir = os.path.join('figures', exp_name)
