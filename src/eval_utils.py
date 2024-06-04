@@ -1,7 +1,7 @@
 import numpy as np
 import scipy
 
-
+from src.orcml import *
 
 def intercluster_distortion(A_gt, A, cluster, node_indices=None, supersample=False, subsample_indices=None):
     """ 
@@ -70,3 +70,65 @@ def intercluster_distances(A, cluster_indices, supersample=False, subsample_indi
         cluster_geo_distances.append(cluster_geo_distances_i)
     cluster_geo_distances = np.concatenate(cluster_geo_distances)
     return cluster_geo_distances
+
+
+def noise_vs_orc_experiment(
+    n_runs,
+    noises,
+    data_function,
+    data_function_kwargs,
+    n_neighbors=20,
+):
+    """
+    Estimate max orc for spuriously connected edges for different noise levels.
+    Parameters
+    ----------
+    n_runs : int
+        The number of runs to average over.
+    noises : list
+        The noise levels to consider.
+    data_function : function
+        The data generation function.
+    data_function_kwargs : dict
+        The keyword arguments for the data generation function.
+    n_neighbors : int
+        The number of neighbors to consider when constructing the proximity graph.
+    Returns
+    -------
+    mean_max_orcs : array-like, shape (n_noises,)
+        The mean maximum Ollivier-Ricci curvature of spurious edges for each noise level.
+    std_max_orcs : array-like, shape (n_noises,)
+        The standard deviation of the maximum Ollivier-Ricci curvature of spurious edges for each noise level.
+    valid_noises : list
+        The noise levels for which spurious edges were formed.
+    """
+    mean_max_orcs = []
+    std_max_orcs = []
+    valid_noises = []
+    for noise in noises:
+        print(f'Running with noise {noise}')
+        max_orcs_fixed_noise = []
+        valid = True
+        for _ in range(n_runs):
+            return_dict = data_function(noise=noise, **data_function_kwargs)
+            data = return_dict['data']
+            cluster = return_dict['cluster']
+            G, _ = make_prox_graph(data, mode='nbrs', n_neighbors=n_neighbors)
+            G_orc, _ = graph_orc(G, weight='weight', alpha=0.5)
+            spurious_orc = spurious_edge_orc(G_orc, cluster)
+            if len(spurious_orc) == 0:
+                print('No spurious edges found, skipping')
+                valid = False
+                break
+            # get max spurious edge orc
+            max_spurious_orc = np.max(spurious_orc)
+            max_orcs_fixed_noise.append(max_spurious_orc)
+        if not valid:
+            continue
+        valid_noises.append(noise)
+        max_orcs_fixed_noise = np.array(max_orcs_fixed_noise)
+        mean_max_orcs.append(np.mean(max_orcs_fixed_noise))
+        std_max_orcs.append(np.std(max_orcs_fixed_noise))
+    mean_max_orcs = np.array(mean_max_orcs)
+    std_max_orcs = np.array(std_max_orcs)
+    return mean_max_orcs, std_max_orcs, valid_noises
