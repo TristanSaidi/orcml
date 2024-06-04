@@ -36,13 +36,26 @@ def make_prox_graph(X, mode='nbrs', n_neighbors=None, epsilon=None):
 
     # convert to networkx graph and symmetrize A
     n_points = X.shape[0]
+    nodes = set()
     G = nx.Graph()
     for i in range(n_points):
         for j in range(i+1, n_points):
             if A[i, j] > 0:
                 G.add_edge(i, j, weight=A[i, j])
+                nodes.add(i)
+                nodes.add(j)
 
     assert G.is_directed() == False, "The graph is directed."
+    if len(G.nodes()) != n_points:
+        print("Warning: There are isolated nodes in the graph. This will be artificially fixed.")
+        missing_nodes = set(range(n_points)).difference(nodes)
+        for node_idx in missing_nodes:
+            # find nearest neighbor
+            isolated_node = X[node_idx]
+            dists = np.linalg.norm(X - isolated_node, axis=1)
+            dists[node_idx] = np.inf # exclude self
+            nearest_neighbor = np.argmin(dists)
+            G.add_edge(node_idx, nearest_neighbor, weight=dists[nearest_neighbor])
     return G, A
 
 
