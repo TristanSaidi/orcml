@@ -146,13 +146,27 @@ def prune(G, threshold, X, color, cluster=None):
             pruned_orcs.append(d['ricciCurvature'])
             if cluster is not None and cluster[i] != cluster[j]:
                 num_bad_edges_removed += 1
+
+    if len(preserved_nodes) != len(G.nodes()):
+        print("Warning: There are isolated nodes in the graph. This will be artificially fixed.")
+        missing_nodes = set(G.nodes()).difference(preserved_nodes)
+        for node_idx in missing_nodes:
+            # find nearest neighbor
+            isolated_node = X[node_idx]
+            dists = np.linalg.norm(X - isolated_node, axis=1)
+            dists[node_idx] = np.inf
+            nearest_neighbor = np.argmin(dists)
+            G_pruned.add_edge(node_idx, nearest_neighbor, weight=dists[nearest_neighbor])
+            # assign this edge 0 curvature
+            G_pruned[node_idx][nearest_neighbor]['ricciCurvature'] = 0
+    
+    assert len(G.nodes()) == len(G_pruned.nodes()), "The number of preserved nodes does not match the number of nodes in the pruned graph."
     
     preserved_orcs = []
     for i, j, d in G_pruned.edges(data=True):
         preserved_orcs.append(d['ricciCurvature'])
-
-    X_pruned = X[list(preserved_nodes)]
-    color_pruned = color[list(preserved_nodes)]
+    X_pruned = X.copy()
+    color_pruned = color.copy()
     
     print(f'{num_removed_edges} of {len(G.edges())} total edges were removed.')
     if cluster is not None:
