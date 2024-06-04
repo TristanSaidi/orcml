@@ -3,9 +3,9 @@ import numpy as np
 import networkx as nx
 import os
 import plotly.graph_objs as go
+import seaborn as sns
 
 from src.eval_utils import *
-
 
 # plotting functions
 
@@ -181,7 +181,7 @@ def plot_emb(Y, color, title, cmap=plt.cm.Spectral, exp_name=None, filename=None
         plt.savefig(path)
 
 
-def plot_intercluster_distances(A, A_pruned, cluster, node_indices=None, exp_name=None, filename=None):
+def plot_intercluster_distances(A, A_pruned, cluster, bins=20, node_indices=None, exp_name=None, filename=None):
     """ 
     Plot histogram of inter-cluster distances of unpruned and pruned graph.
     Parameters
@@ -195,6 +195,7 @@ def plot_intercluster_distances(A, A_pruned, cluster, node_indices=None, exp_nam
     node_indices : list
         List of node indices for unshuffling (Optional). 
     """
+    sns.set_theme()
     if node_indices is not None:
         cluster = cluster[node_indices]
     # num of clusters
@@ -207,11 +208,31 @@ def plot_intercluster_distances(A, A_pruned, cluster, node_indices=None, exp_nam
     cluster_geo_distances = intercluster_distances(A, cluster_indices)
     cluster_geo_distances_pruned = intercluster_distances(A_pruned, cluster_indices)
     # plot histogram
-    plt.hist([cluster_geo_distances, cluster_geo_distances_pruned], label=['unpruned', 'pruned'], bins=100, density=True)
+    plt.hist([cluster_geo_distances, cluster_geo_distances_pruned], label=['unpruned', 'pruned'], bins=bins, density=True)
     plt.legend()
     plt.xlabel('Estimated geodesic distance')
     plt.ylabel('Density')
     plt.title('Inter-cluster geodesic distances')
+    if filename is not None and exp_name is not None:
+        os.makedirs('figures', exist_ok=True)
+        exp_dir = os.path.join('figures', exp_name)
+        os.makedirs(exp_dir, exist_ok=True)
+        path = os.path.join(exp_dir, filename)
+        plt.savefig(path)
+
+def histogram(data, title, xlabel, ylabel, legend=None, bins=20, exp_name=None, filename=None):
+    """
+    Plot a histogram of the data.
+    Parameters
+    ----------
+    """
+    plt.figure()
+    plt.hist(data, bins, density=True);
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    if legend is not None:
+        plt.legend(legend)
     if filename is not None and exp_name is not None:
         os.makedirs('figures', exist_ok=True)
         exp_dir = os.path.join('figures', exp_name)

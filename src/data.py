@@ -3,7 +3,7 @@ from src.manifold import Torus, Hyperboloid
 import numpy as np
 # Data generation functions
 
-def concentric_circles(n_samples, factor, noise):
+def concentric_circles(n_samples, factor, noise, supersample=False, supersample_factor=2.5):
     """ 
     Generate concentric circles with noise. 
     Parameters
@@ -14,19 +14,36 @@ def concentric_circles(n_samples, factor, noise):
         The scaling factor between the circles.
     noise : float
         The standard deviation of the Gaussian noise.
-
+    supersample : bool
+        If True, the circles are supersampled.
+    supersample_factor : float
+        The factor by which to supersample the circles.
     Returns
     -------
-    X : array-like, shape (n_samples, 2)
+    circles : array-like, shape (n_samples, 2)
         The generated samples.
-    
-    y : array-like, shape (n_samples,)
+    cluster : array-like, shape (n_samples,)
         The integer labels for class membership of each sample.
+    circles_supersample : array-like, shape (n_samples*supersample_factor, 2)
+        The supersampled circles.
+    subsample_indices : list
+        The indices of the subsampled circles.
     """
-    X, y = datasets.make_circles(n_samples=n_samples, noise=noise, factor=factor)
-    return X, y
+    if supersample:
+        N_total = int(n_samples * supersample_factor)
+        subsample_indices = np.random.choice(N_total, n_samples, replace=False)
+    else:
+        N_total = n_samples
+        subsample_indices = None
+    circles, cluster = datasets.make_circles(n_samples=N_total, factor=factor)
+    if supersample:
+        circles_supersample = circles.copy()
+        circles = circles[subsample_indices]
+        cluster = cluster[subsample_indices]
+    circles += noise * np.random.randn(*circles.shape)
+    return circles, cluster, circles_supersample, subsample_indices
 
-def swiss_roll(n_points, noise, dim=3):
+def swiss_roll(n_points, noise, dim=3, supersample=False, supersample_factor=2.5):
     """
     Generate a Swiss roll dataset.
     Parameters
@@ -44,10 +61,21 @@ def swiss_roll(n_points, noise, dim=3):
     dim: int
         The dimension of the Swiss roll.
     """
-    swiss_roll, color = datasets.make_swiss_roll(n_points, noise=noise)
+    if supersample:
+        N_total = int(n_points * supersample_factor)
+        subsample_indices = np.random.choice(N_total, n_points, replace=False)
+    swiss_roll, color = datasets.make_swiss_roll(N_total)
     if dim == 2:
         swiss_roll = swiss_roll[:, [0, 2]]
-    return swiss_roll, color
+    if supersample:
+        swiss_roll_supersample = swiss_roll.copy()
+        swiss_roll = swiss_roll[subsample_indices]
+        color = color[subsample_indices]
+    else:
+        swiss_roll_supersample = None
+        subsample_indices = None
+    swiss_roll += noise * np.random.randn(*swiss_roll.shape)
+    return swiss_roll, color, swiss_roll_supersample, subsample_indices
 
 def torus(n_points, noise, r=1.5, R=5, double=False, supersample=False, supersample_factor=2.5):
     """
@@ -64,6 +92,12 @@ def torus(n_points, noise, r=1.5, R=5, double=False, supersample=False, supersam
         The generated torus.
     color : array-like, shape (n_points,)
         The color of each point.
+    cluster : array-like, shape (n_points,)
+        The cluster labels.
+    torus_subsample : array-like, shape (n_points, 3)
+        The subsampled torus.
+    subsample_indices : list
+        The indices of the subsampled torus.
     """
     if double and R <= 2*r:
         raise Warning("Double torii will intersect")

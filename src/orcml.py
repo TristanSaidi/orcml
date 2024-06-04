@@ -119,6 +119,7 @@ def prune(G, threshold, X, color, cluster=None):
     num_removed_edges = 0
     total_bad_edges = 0
     num_bad_edges_removed = 0 # edges with vertices in different clusters (if cluster is not None)
+    pruned_orcs = []
 
     for i, j, d in G.edges(data=True):
         total_bad_edges += 1 if cluster is not None and cluster[i] != cluster[j] else 0
@@ -129,6 +130,7 @@ def prune(G, threshold, X, color, cluster=None):
             G_pruned[i][j]['ricciCurvature'] = d['ricciCurvature']
         else:
             num_removed_edges += 1
+            pruned_orcs.append(d['ricciCurvature'])
             if cluster is not None and cluster[i] != cluster[j]:
                 num_bad_edges_removed += 1
     
@@ -150,5 +152,27 @@ def prune(G, threshold, X, color, cluster=None):
         'X_pruned': X_pruned,
         'color_pruned': color_pruned,
         'preserved_orcs': preserved_orcs,
-        'preserved_indices': list(preserved_nodes)
+        'preserved_indices': list(preserved_nodes),
+        'pruned_orcs': pruned_orcs
     }
+
+def spurious_edge_orc(G_orc, cluster):
+    """
+    Get the Ollivier-Ricci curvature of spurious edges in the graph.
+    Parameters:
+    ----------
+    G_orc: nx.Graph
+        The graph with computed Ollivier-Ricci curvature as edge attributes.
+    cluster: list
+        A list mapping nodes to their cluster index.
+    Returns:
+    --------
+    spurious_edges: list
+        A list of the Ollivier-Ricci curvature of spurious edges.
+    """
+    orc = nx.get_edge_attributes(G_orc, 'ricciCurvature')
+    spurious_edges = []
+    for edge in G_orc.edges():
+        if cluster[edge[0]] != cluster[edge[1]]:
+            spurious_edges.append(orc[edge])
+    return spurious_edges
