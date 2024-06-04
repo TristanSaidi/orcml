@@ -48,7 +48,7 @@ def make_prox_graph(X, mode='nbrs', n_neighbors=None, epsilon=None):
 
 def adjust_orcs(orcs, clip=False):
     """
-    Adjust the Ollivier-Ricci curvatures to lie within 2 standard deviations of the mean.
+    Rescale the Ollivier-Ricci curvatures.
     Parameters
     ----------
     orcs : array-like, shape (n_edges,)
