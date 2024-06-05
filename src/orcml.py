@@ -194,12 +194,14 @@ def spurious_edge_orc(G_orc, cluster):
         A list mapping nodes to their cluster index.
     Returns:
     --------
-    spurious_edges: list
+    spurious_edge_orcs: list
         A list of the Ollivier-Ricci curvature of spurious edges.
     """
     orc = nx.get_edge_attributes(G_orc, 'ricciCurvature')
-    spurious_edges = []
+    spurious_edge_orcs = []
+    spurious_edge_distances = []
     for edge in G_orc.edges():
         if cluster[edge[0]] != cluster[edge[1]]:
-            spurious_edges.append(orc[edge])
-    return spurious_edges
+            spurious_edge_orcs.append(orc[edge])
+            spurious_edge_distances.append(G_orc[edge[0]][edge[1]]['weight'])
+    return spurious_edge_orcs, spurious_edge_distances
