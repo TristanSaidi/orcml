@@ -258,3 +258,30 @@ def plot_line_graph(x, y, title, xlabel, ylabel, legend=None, std=None, exp_name
         os.makedirs(exp_dir, exist_ok=True)
         path = os.path.join(exp_dir, filename)
         plt.savefig(path)
+
+def plot_scatter(x, y, title, xlabel, ylabel, legend=None, color=None, exp_name=None, filename=None):
+    """
+    Plot a scatter plot with the given parameters.
+    """
+    assert type(x) is type(y), 'x and y must be of the same type.'
+    if type(x) is not list:
+        x = [x]
+        y = [y]
+    sns.set_theme()
+    plt.figure()
+    for i in range(len(x)):
+        if color is not None:
+            plt.scatter(x[i], y[i], c=color[i])
+        else:
+            plt.scatter(x[i], y[i])
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    if legend:
+        plt.legend(legend)
+    if filename is not None and exp_name is not None:
+        os.makedirs('figures', exist_ok=True)
+        exp_dir = os.path.join('figures', exp_name)
+        os.makedirs(exp_dir, exist_ok=True)
+        path = os.path.join(exp_dir, filename)
+        plt.savefig(path)
