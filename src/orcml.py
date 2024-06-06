@@ -101,14 +101,19 @@ def graph_orc(G, weight='weight', alpha=0.5):
     orc = OllivierRicci(G, weight=weight, alpha=alpha, verbose='INFO')
     orc.compute_ricci_curvature()
     orcs = []
+    wasserstein_distances = []
     for i, j, _ in orc.G.edges(data=True):
         orcs.append(orc.G[i][j]['ricciCurvature'])
+        # record the Wasserstein distance between the two vertices
+        W = orc.G[i][j]['weight']*(1 - orc.G[i][j]['ricciCurvature'])
+        wasserstein_distances.append(W)
     # adjust the Ollivier-Ricci curvatures
     adjusted_orcs = adjust_orcs(orcs)
     # reassign the adjusted Ollivier-Ricci curvatures to the graph
     for idx, (i, j, _) in enumerate(orc.G.edges(data=True)):
         orc.G[i][j]['ricciCurvature'] = adjusted_orcs[idx]
-    return orc.G, adjusted_orcs
+        orc.G[i][j]['wassersteinDistance'] = wasserstein_distances[idx]
+    return orc.G, adjusted_orcs, wasserstein_distances
 
 
 def prune(G, threshold, X, color, cluster=None):
@@ -200,8 +205,10 @@ def spurious_edge_orc(G_orc, cluster):
     orc = nx.get_edge_attributes(G_orc, 'ricciCurvature')
     spurious_edge_orcs = []
     spurious_edge_distances = []
+    spurious_edge_wasserstein_distances = []
     for edge in G_orc.edges():
         if cluster[edge[0]] != cluster[edge[1]]:
             spurious_edge_orcs.append(orc[edge])
             spurious_edge_distances.append(G_orc[edge[0]][edge[1]]['weight'])
-    return spurious_edge_orcs, spurious_edge_distances
+            spurious_edge_wasserstein_distances.append(G_orc[edge[0]][edge[1]]['wassersteinDistance'])
+    return spurious_edge_orcs, spurious_edge_distances, spurious_edge_wasserstein_distances
