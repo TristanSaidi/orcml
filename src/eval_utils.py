@@ -77,6 +77,7 @@ def noise_vs_orc_experiment(
     noises,
     data_function,
     data_function_kwargs,
+    key='scaledricciCurvature',
     n_neighbors=20,
 ):
     """
@@ -102,6 +103,9 @@ def noise_vs_orc_experiment(
     valid_noises : list
         The noise levels for which spurious edges were formed.
     """
+    assert key in ['scaledricciCurvature', 'ricciCurvature'], 'Key must be either scaledricciCurvature or ricciCurvature.'
+    mapped_key = 'spurious_edge_scaled_orcs' if key == 'scaledricciCurvature' else 'spurious_edge_orcs'
+    
     mean_max_orcs = []
     std_max_orcs = []
     valid_noises = []
@@ -114,8 +118,10 @@ def noise_vs_orc_experiment(
             data = return_dict['data']
             cluster = return_dict['cluster']
             G, _ = make_prox_graph(data, mode='nbrs', n_neighbors=n_neighbors)
-            G_orc, _ = graph_orc(G, weight='weight', alpha=0.5)
-            spurious_orc = spurious_edge_orc(G_orc, cluster)
+            return_dict = graph_orc(G, weight='weight')
+            G_orc = return_dict['G']
+            return_dict = spurious_edge_orc(G_orc, cluster)
+            spurious_orc = return_dict[mapped_key]
             if len(spurious_orc) == 0:
                 print('No spurious edges found, skipping')
                 valid = False

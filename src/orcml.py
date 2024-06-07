@@ -33,7 +33,9 @@ def make_prox_graph(X, mode='nbrs', n_neighbors=None, epsilon=None):
         A = neighbors.radius_neighbors_graph(X, radius=epsilon, mode='distance')
     else:
         raise ValueError("Invalid mode. Choose 'nbrs' or 'eps'.")
-
+    # symmetrize the adjacency matrix
+    A = np.maximum(A.toarray(), A.toarray().T)
+    assert np.allclose(A, A.T), "The adjacency matrix is not symmetric."
     # convert to networkx graph and symmetrize A
     n_points = X.shape[0]
     nodes = set()
@@ -82,7 +84,7 @@ def adjust_orcs(orcs, clip=False):
     adjusted_orcs = (adjusted_orcs - mean) / std # convert to z-scores
     return adjusted_orcs
 
-def graph_orc(G, weight='weight', alpha=0.5):
+def graph_orc(G, weight='weight'):
     """
     Compute the Ollivier-Ricci curvature on edges of a graph.
     Parameters
@@ -98,7 +100,7 @@ def graph_orc(G, weight='weight', alpha=0.5):
     G : networkx.Graph
         The graph with the Ollivier-Ricci curvatures as edge attributes.
     """
-    orc = OllivierRicci(G, weight=weight, alpha=alpha, verbose='INFO')
+    orc = OllivierRicci(G, weight=weight, alpha=0.0, method='OTD', verbose='INFO')
     orc.compute_ricci_curvature()
     orcs = []
     wasserstein_distances = []
@@ -107,16 +109,21 @@ def graph_orc(G, weight='weight', alpha=0.5):
         # record the Wasserstein distance between the two vertices
         W = orc.G[i][j]['weight']*(1 - orc.G[i][j]['ricciCurvature'])
         wasserstein_distances.append(W)
+        orc.G[i][j]['wassersteinDistance'] = W
     # adjust the Ollivier-Ricci curvatures
-    adjusted_orcs = adjust_orcs(orcs)
+    scaled_orcs = adjust_orcs(orcs)
     # reassign the adjusted Ollivier-Ricci curvatures to the graph
     for idx, (i, j, _) in enumerate(orc.G.edges(data=True)):
-        orc.G[i][j]['ricciCurvature'] = adjusted_orcs[idx]
-        orc.G[i][j]['wassersteinDistance'] = wasserstein_distances[idx]
-    return orc.G, adjusted_orcs, wasserstein_distances
+        orc.G[i][j]['scaledricciCurvature'] = scaled_orcs[idx]
+    return {
+        'G': orc.G,
+        'orcs': orcs,
+        'scaled_orcs': scaled_orcs,
+        'wasserstein_distances': wasserstein_distances,
+    }
 
 
-def prune(G, threshold, X, color, cluster=None):
+def prune(G, threshold, X, key='scaledricciCurvature', cluster=None):
     """
     Prune the graph based on a threshold. Adjust the node coordinates and colors accordingly.
     Parameters
@@ -130,6 +137,7 @@ def prune(G, threshold, X, color, cluster=None):
     G_pruned : networkx.Graph
         The pruned graph.
     """
+    assert key in ['ricciCurvature', 'scaledricciCurvature'], "Invalid key."
     G_pruned = nx.Graph()
     preserved_nodes = set()
     
@@ -137,18 +145,18 @@ def prune(G, threshold, X, color, cluster=None):
     num_removed_edges = 0
     total_bad_edges = 0
     num_bad_edges_removed = 0 # edges with vertices in different clusters (if cluster is not None)
-    pruned_orcs = []
 
     for i, j, d in G.edges(data=True):
         total_bad_edges += 1 if cluster is not None and cluster[i] != cluster[j] else 0
-        if d['ricciCurvature'] > threshold:
+        if d[key] > threshold:
             G_pruned.add_edge(i, j, weight=d['weight'])
             preserved_nodes.add(i)
             preserved_nodes.add(j)
             G_pruned[i][j]['ricciCurvature'] = d['ricciCurvature']
+            G_pruned[i][j]['scaledricciCurvature'] = d['scaledricciCurvature']
+            G_pruned[i][j]['wassersteinDistance'] = d['wassersteinDistance']
         else:
             num_removed_edges += 1
-            pruned_orcs.append(d['ricciCurvature'])
             if cluster is not None and cluster[i] != cluster[j]:
                 num_bad_edges_removed += 1
 
@@ -168,10 +176,10 @@ def prune(G, threshold, X, color, cluster=None):
     assert len(G.nodes()) == len(G_pruned.nodes()), "The number of preserved nodes does not match the number of nodes in the pruned graph."
     
     preserved_orcs = []
+    preserved_scaled_orcs = []
     for i, j, d in G_pruned.edges(data=True):
         preserved_orcs.append(d['ricciCurvature'])
-    X_pruned = X.copy()
-    color_pruned = color.copy()
+        preserved_scaled_orcs.append(d['scaledricciCurvature'])
     
     print(f'{num_removed_edges} of {len(G.edges())} total edges were removed.')
     if cluster is not None:
@@ -180,12 +188,8 @@ def prune(G, threshold, X, color, cluster=None):
     
     return {
         'G_pruned': G_pruned,
-        'preserved_nodes': preserved_nodes,
-        'X_pruned': X_pruned,
-        'color_pruned': color_pruned,
         'preserved_orcs': preserved_orcs,
-        'preserved_indices': list(preserved_nodes),
-        'pruned_orcs': pruned_orcs
+        'preserved_scaled_orcs': preserved_scaled_orcs,
     }
 
 def spurious_edge_orc(G_orc, cluster):
@@ -203,12 +207,21 @@ def spurious_edge_orc(G_orc, cluster):
         A list of the Ollivier-Ricci curvature of spurious edges.
     """
     orc = nx.get_edge_attributes(G_orc, 'ricciCurvature')
+    scaled_orc = nx.get_edge_attributes(G_orc, 'scaledricciCurvature')
+
     spurious_edge_orcs = []
+    spurious_edge_scaled_orcs = []
     spurious_edge_distances = []
     spurious_edge_wasserstein_distances = []
     for edge in G_orc.edges():
         if cluster[edge[0]] != cluster[edge[1]]:
             spurious_edge_orcs.append(orc[edge])
+            spurious_edge_scaled_orcs.append(scaled_orc[edge])
             spurious_edge_distances.append(G_orc[edge[0]][edge[1]]['weight'])
             spurious_edge_wasserstein_distances.append(G_orc[edge[0]][edge[1]]['wassersteinDistance'])
-    return spurious_edge_orcs, spurious_edge_distances, spurious_edge_wasserstein_distances
+    return {
+        'spurious_edge_orcs': spurious_edge_orcs,
+        'spurious_edge_scaled_orcs': spurious_edge_scaled_orcs,
+        'spurious_edge_distances': spurious_edge_distances,
+        'spurious_edge_wasserstein_distances': spurious_edge_wasserstein_distances,
+    }
