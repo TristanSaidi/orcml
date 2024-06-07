@@ -9,7 +9,7 @@ from src.eval_utils import *
 
 # plotting functions
 
-def plot_data_2D(X, y, title, exp_name=None, filename=None):
+def plot_data_2D(X, y, title, axes=False, exp_name=None, filename=None):
     """
     Plot the data with the points colored by class membership.
     Parameters
@@ -25,7 +25,8 @@ def plot_data_2D(X, y, title, exp_name=None, filename=None):
     plt.scatter(X[:, 0], X[:, 1], c=y, cmap=plt.cm.Spectral)
     plt.title(title)
     plt.gca().set_aspect('equal')
-    plt.gca().set_axis_off()
+    if not axes:
+        plt.gca().set_axis_off()
     if filename is not None and exp_name is not None:
         os.makedirs('figures', exist_ok=True)
         exp_dir = os.path.join('figures', exp_name)
