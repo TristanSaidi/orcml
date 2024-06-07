@@ -4,6 +4,7 @@ import networkx as nx
 import os
 import plotly.graph_objs as go
 import seaborn as sns
+import gudhi
 
 from src.eval_utils import *
 
@@ -50,6 +51,7 @@ def plot_graph_2D(X, graph, title, node_color='#1f78b4', edge_color='lightgray',
     edge_color : str
         The color of the edges.
     """
+    plt.figure()
     nx.draw(graph, X, node_color=node_color, edge_color=edge_color, node_size=node_size, cmap=plt.cm.Spectral, edge_cmap=plt.cm.coolwarm, edge_vmin=-1, edge_vmax=1)
     plt.title(title)
     plt.gca().set_aspect('equal')
@@ -280,6 +282,24 @@ def plot_scatter(x, y, title, xlabel, ylabel, legend=None, color=None, exp_name=
     plt.ylabel(ylabel)
     if legend:
         plt.legend(legend)
+    if filename is not None and exp_name is not None:
+        os.makedirs('figures', exist_ok=True)
+        exp_dir = os.path.join('figures', exp_name)
+        os.makedirs(exp_dir, exist_ok=True)
+        path = os.path.join(exp_dir, filename)
+        plt.savefig(path)
+
+
+def plot_barcode(dgms, title=None, exp_name=None, filename=None):
+    """
+    Plot a persistence barcode.
+    Parameters
+    ----------
+    dgms : list
+        List of persistence diagrams, where each element is a list [homology, persistence].
+    """
+    ax = gudhi.plot_persistence_barcode(dgms, max_intervals=100, alpha=0.9)
+    ax.set_title('Persistence barcode') if title is None else ax.set_title(title)
     if filename is not None and exp_name is not None:
         os.makedirs('figures', exist_ok=True)
         exp_dir = os.path.join('figures', exp_name)

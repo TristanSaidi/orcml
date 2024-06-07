@@ -185,9 +185,10 @@ def prune(G, threshold, X, key='scaledricciCurvature', cluster=None):
     if cluster is not None:
         print(f'{num_bad_edges_removed} of {num_removed_edges} removed edges were bad edges.')
         print(f'{num_bad_edges_removed} of {total_bad_edges} total bad edges were removed.')
-    
+    A_pruned = nx.adjacency_matrix(G_pruned).toarray()
     return {
         'G_pruned': G_pruned,
+        'A_pruned': A_pruned,
         'preserved_orcs': preserved_orcs,
         'preserved_scaled_orcs': preserved_scaled_orcs,
     }
