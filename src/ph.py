@@ -1,7 +1,7 @@
-import ripser
-import numpy as np
+from scipy.sparse.csgraph import shortest_path
+from gph.python import ripser_parallel
 
-def rips_ph(A, maxdim=1):
+def rips_ph(A, maxdim=2):
     """
     Compute the persistence diagram of a Rips filtration on a graph.
     Parameters
@@ -15,14 +15,10 @@ def rips_ph(A, maxdim=1):
     proc_dgms : list
         List of persistence diagrams, where each element is a list [homology, persistence].
     """
-    # Prepare adjacency matrix for Ripser
-    A = A.astype(float)
-    A[A == 0] = np.inf
-    np.fill_diagonal(A, [0]*A.shape[0])
-    dgms = ripser.ripser(A, distance_matrix=True, maxdim=maxdim)['dgms']
-    # Process persistence diagrams
+    A = shortest_path(A, directed=False)
+    dgm = ripser_parallel(A, metric='precomputed', maxdim=maxdim, collapse_edges=True)['dgms']
     proc_dgms = []
-    for homology, persistence in enumerate(dgms):
+    for homology, persistence in enumerate(dgm):
         for element in persistence:
             proc_dgms.append([homology, element])
     return proc_dgms
