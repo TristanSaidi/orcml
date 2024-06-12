@@ -172,6 +172,81 @@ def prune(G, threshold, X, key='scaledricciCurvature', cluster=None):
             G_pruned.add_edge(node_idx, nearest_neighbor, weight=dists[nearest_neighbor])
             # assign this edge 0 curvature
             G_pruned[node_idx][nearest_neighbor]['ricciCurvature'] = 0
+            G_pruned[node_idx][nearest_neighbor]['scaledricciCurvature'] = 0
+    
+    assert len(G.nodes()) == len(G_pruned.nodes()), "The number of preserved nodes does not match the number of nodes in the pruned graph."
+    
+    preserved_orcs = []
+    preserved_scaled_orcs = []
+    for i, j, d in G_pruned.edges(data=True):
+        preserved_orcs.append(d['ricciCurvature'])
+        preserved_scaled_orcs.append(d['scaledricciCurvature'])
+    
+    print(f'{num_removed_edges} of {len(G.edges())} total edges were removed.')
+    if cluster is not None:
+        print(f'{num_bad_edges_removed} of {num_removed_edges} removed edges were bad edges.')
+        print(f'{num_bad_edges_removed} of {total_bad_edges} total bad edges were removed.')
+    A_pruned = nx.adjacency_matrix(G_pruned).toarray()
+    return {
+        'G_pruned': G_pruned,
+        'A_pruned': A_pruned,
+        'preserved_orcs': preserved_orcs,
+        'preserved_scaled_orcs': preserved_scaled_orcs,
+    }
+
+def prune_adaptive(G, X, l, cluster=None):
+    """
+    Prune the graph based on mathematically predicted threshold.
+    Parameters
+    ----------
+    G : networkx.Graph
+        The graph to prune.
+    threshold : float
+        The threshold for the scaled Ollivier-Ricci curvature.
+    Returns
+    -------
+    G_pruned : networkx.Graph
+        The pruned graph.
+    """
+    G_pruned = nx.Graph()
+    preserved_nodes = set()
+    
+    # bookkeeping
+    num_removed_edges = 0
+    total_bad_edges = 0
+    num_bad_edges_removed = 0 # edges with vertices in different clusters (if cluster is not None)
+
+    for i, j, d in G.edges(data=True):
+        total_bad_edges += 1 if cluster is not None and cluster[i] != cluster[j] else 0
+        # threshold = 1/deg(i) + 1/deg(j)
+        edge_length = d['weight']
+        threshold = (2/G.degree(i) + 1/G.degree(j)) - (l/edge_length) * (1 - (2/G.degree(i) + 1/G.degree(j)))
+
+        if d['ricciCurvature'] > threshold:
+            G_pruned.add_edge(i, j, weight=d['weight'])
+            preserved_nodes.add(i)
+            preserved_nodes.add(j)
+            G_pruned[i][j]['ricciCurvature'] = d['ricciCurvature']
+            G_pruned[i][j]['scaledricciCurvature'] = d['scaledricciCurvature']
+            G_pruned[i][j]['wassersteinDistance'] = d['wassersteinDistance']
+        else:
+            num_removed_edges += 1
+            if cluster is not None and cluster[i] != cluster[j]:
+                num_bad_edges_removed += 1
+
+    if len(preserved_nodes) != len(G.nodes()):
+        print("Warning: There are isolated nodes in the graph. This will be artificially fixed.")
+        missing_nodes = set(G.nodes()).difference(preserved_nodes)
+        for node_idx in missing_nodes:
+            # find nearest neighbor
+            isolated_node = X[node_idx]
+            dists = np.linalg.norm(X - isolated_node, axis=1)
+            dists[node_idx] = np.inf
+            nearest_neighbor = np.argmin(dists)
+            G_pruned.add_edge(node_idx, nearest_neighbor, weight=dists[nearest_neighbor])
+            # assign this edge 0 curvature
+            G_pruned[node_idx][nearest_neighbor]['ricciCurvature'] = 0
+            G_pruned[node_idx][nearest_neighbor]['scaledricciCurvature'] = 0
     
     assert len(G.nodes()) == len(G_pruned.nodes()), "The number of preserved nodes does not match the number of nodes in the pruned graph."
     
