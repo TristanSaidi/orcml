@@ -107,7 +107,7 @@ def graph_orc(G, weight='weight'):
     for i, j, _ in orc.G.edges(data=True):
         orcs.append(orc.G[i][j]['ricciCurvature'])
         # record the Wasserstein distance between the two vertices
-        W = orc.G[i][j]['weight']*(1 - orc.G[i][j]['ricciCurvature'])
+        W = orc.G[i][j][weight]*(1 - orc.G[i][j]['ricciCurvature'])
         wasserstein_distances.append(W)
         orc.G[i][j]['wassersteinDistance'] = W
     # adjust the Ollivier-Ricci curvatures
@@ -220,7 +220,9 @@ def prune_adaptive(G, X, l, cluster=None):
         total_bad_edges += 1 if cluster is not None and cluster[i] != cluster[j] else 0
         # threshold = 1/deg(i) + 1/deg(j)
         edge_length = d['weight']
-        threshold = (2/G.degree(i) + 1/G.degree(j)) - (l/edge_length) * (1 - (2/G.degree(i) + 1/G.degree(j)))
+        # threshold = (2/G.degree(i) + 1/G.degree(j)) - (l/edge_length) * (1 - (2/G.degree(i) + 1/G.degree(j)))
+        max_inv_deg = max(1/G.degree(i), 1/G.degree(j))
+        threshold = (1 - max_inv_deg) - (l/edge_length) * (max_inv_deg)
 
         if d['ricciCurvature'] > threshold:
             G_pruned.add_edge(i, j, weight=d['weight'])
