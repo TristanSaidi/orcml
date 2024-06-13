@@ -11,6 +11,27 @@ from sklearn.utils.graph import _fix_connected_components
 
 # embeddings
 
+def tsne(A, n_components):
+    """
+    Compute the t-SNE embedding of a graph.
+    Parameters
+    ----------
+    A : array-like, shape (n_samples, n_samples)
+        The adjacency matrix of the graph.
+    n_components : int
+        The number of components to keep.
+    Returns
+    -------
+    Y : array-like, shape (n_samples, n_components)
+        The t-SNE embedding of the graph.
+    """
+    distances = scipy.sparse.csgraph.shortest_path(A, directed=False)
+    assert np.allclose(distances, distances.T), "The distance matrix is not symmetric."
+
+    tsne = manifold.TSNE(n_components=n_components, metric='precomputed', init='random')
+    Y = tsne.fit_transform(distances)
+    return Y
+
 def spectral_embedding(A, n_components):
     """
     Compute the spectral embedding of a graph.
