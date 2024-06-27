@@ -44,6 +44,8 @@ def make_prox_graph(X, mode='nbrs', n_neighbors=None, epsilon=None):
         for j in range(i+1, n_points):
             if A[i, j] > 0:
                 G.add_edge(i, j, weight=A[i, j])
+                if mode == 'eps':
+                    G[i][j]['unweighted_dist'] = epsilon
                 nodes.add(i)
                 nodes.add(j)
 
@@ -61,7 +63,7 @@ def make_prox_graph(X, mode='nbrs', n_neighbors=None, epsilon=None):
     return G, A
 
 
-def adjust_orcs(orcs, clip=False):
+def adjust_orcs(orcs, clip=False, scale=True):
     """
     Rescale the Ollivier-Ricci curvatures.
     Parameters
@@ -80,11 +82,11 @@ def adjust_orcs(orcs, clip=False):
     ref_min = mean - 2*std
     ref_max = mean + 2*std
     # clip the Ollivier-Ricci curvatures to lie within 2 standard deviations of the mean
-    adjusted_orcs = np.clip(orcs, ref_min, ref_max) if clip else orcs
-    adjusted_orcs = (adjusted_orcs - mean) / std # convert to z-scores
-    return adjusted_orcs
+    orcs = np.clip(orcs, ref_min, ref_max) if clip else orcs
+    orcs = (orcs - mean) / std if scale else orcs # convert to z-scores
+    return orcs
 
-def graph_orc(G, weight='weight'):
+def graph_orc(G, weight='weight', scale=True):
     """
     Compute the Ollivier-Ricci curvature on edges of a graph.
     Parameters
@@ -222,7 +224,8 @@ def prune_adaptive(G, X, l, cluster=None):
         edge_length = d['weight']
         # threshold = (2/G.degree(i) + 1/G.degree(j)) - (l/edge_length) * (1 - (2/G.degree(i) + 1/G.degree(j)))
         max_inv_deg = max(1/G.degree(i), 1/G.degree(j))
-        threshold = (1 - max_inv_deg) - (l/edge_length) * (max_inv_deg)
+        min_inv_deg = min(1/G.degree(i), 1/G.degree(j))
+        threshold = -(max_inv_deg + 3 * min_inv_deg) - (l/edge_length) * (max_inv_deg)
 
         if d['ricciCurvature'] > threshold:
             G_pruned.add_edge(i, j, weight=d['weight'])
