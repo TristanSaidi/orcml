@@ -242,8 +242,6 @@ def prune_adaptive(G, X, eps, lda, delta=1.0, weight='unweighted_dist', cluster=
     
     total_bad_edges = len(bad_edges)
     print(f"Number of candidate edges: {len(C)}")
-    if cluster is not None:
-        print(f'All bad edges in C? {all([edge in C for edge in bad_edges])}')
     # bookkeeping
     num_removed_edges = 0
     num_bad_edges_removed = 0 # edges with vertices in different clusters (if cluster is not None)
@@ -252,9 +250,21 @@ def prune_adaptive(G, X, eps, lda, delta=1.0, weight='unweighted_dist', cluster=
     preserved_nodes = set()
 
     # check distance d_G'(x,y) for all x,y in C
-    threshold = 2/(np.sqrt(5)-1)*(7*np.pi/5)*(1-lda)*(eps)
+    threshold = 2/(np.sqrt(5)-1)*(7*np.pi/5)*(1-lda)
     print(f"Distance Threshold: {threshold}")
     for num, (i, j) in enumerate(C):
+        if eps is not None:
+            threshold *= eps
+        else:
+            # find the edge distance for all edges incident to i or j
+            dists = []
+            for k in G.neighbors(i):
+                dists.append(G[i][k][weight])
+            for k in G.neighbors(j):
+                dists.append(G[j][k][weight])
+            eps = np.max(dists)
+            threshold *= eps
+
         if i not in G_prime.nodes() or j not in G_prime.nodes():
             continue
         try:
@@ -312,6 +322,8 @@ def prune_adaptive(G, X, eps, lda, delta=1.0, weight='unweighted_dist', cluster=
     if cluster is not None:
         print(f'{num_bad_edges_removed} of {num_removed_edges} removed edges were bad edges.')
         print(f'{num_bad_edges_removed} of {total_bad_edges} total bad edges were removed.')
+        print(f'All bad edges in C? {all([edge in C for edge in bad_edges])}')
+
     A_pruned = nx.adjacency_matrix(G_pruned).toarray()
     return {
         'G_pruned': G_pruned,
