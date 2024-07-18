@@ -100,28 +100,31 @@ def isomap_connected_component(A, n_components, X=None):
     """
     n_connected_components, component_labels = scipy.sparse.csgraph.connected_components(A)
     Y = []
+    preserved_indices = []
     # separately embed each connected component        
     for i in range(n_connected_components):
         idx_i = np.flatnonzero(component_labels == i)
-        print('Connected component:', i, 'Number of points:', len(idx_i))
         # skip really small connected components
-        if len(idx_i) < A.shape[0] // (n_connected_components * 2):
+        if len(idx_i) < A.shape[0] // 10:
             continue
+        print('Connected component:', i, 'Number of points:', len(idx_i))
+        preserved_indices.extend(idx_i)
         Ai = A[np.ix_(idx_i, idx_i)]
         assert np.allclose(Ai, Ai.T), "The adjacency matrix is not symmetric."
         Yi = isomap(Ai, n_components)
         Y.append(Yi)
+        assert len(idx_i) == Yi.shape[0], "The number of points in the connected component does not match the number of rows in the embedding."
 
     num_clusters = len(Y)
-    print('Number of clusters:', num_clusters)
-    if num_clusters > 1:
-        for cluster in range(num_clusters):
-            theta = 2 * np.pi * cluster / num_clusters
-            centroid = 3 * np.array([np.cos(theta), np.sin(theta)])
-            Y[cluster] += centroid
+    # print('Number of clusters:', num_clusters)
+    # if num_clusters > 1:
+    #     for cluster in range(num_clusters):
+    #         theta = 2 * np.pi * cluster / num_clusters
+    #         centroid = 3 * np.array([np.cos(theta), np.sin(theta)])
+    #         Y[cluster] += centroid
 
     Y = np.concatenate(Y)
-    return Y
+    return Y, preserved_indices
     
 def isomap(A, n_components, X=None):
     """

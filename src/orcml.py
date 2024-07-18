@@ -238,7 +238,8 @@ def prune_adaptive(G, X, eps, lda, delta=1.0, weight='unweighted_dist', cluster=
             G_prime[i][j]['ricciCurvature'] = d['ricciCurvature']
             G_prime[i][j]['scaledricciCurvature'] = d['scaledricciCurvature']
             G_prime[i][j]['wassersteinDistance'] = d['wassersteinDistance']
-            G_prime[i][j][weight] = d[weight]
+            G_prime[i][j]['unweighted_dist'] = d['unweighted_dist']
+            G_prime[i][j]['weight'] = d['weight']
     
     total_bad_edges = len(bad_edges)
     print(f"Number of candidate edges: {len(C)}")
@@ -293,6 +294,9 @@ def prune_adaptive(G, X, eps, lda, delta=1.0, weight='unweighted_dist', cluster=
             G_pruned[i][j]['ricciCurvature'] = G[i][j]['ricciCurvature']
             G_pruned[i][j]['scaledricciCurvature'] = G[i][j]['scaledricciCurvature']
             G_pruned[i][j]['wassersteinDistance'] = G[i][j]['wassersteinDistance']
+            G_pruned[i][j]['unweighted_dist'] = G[i][j]['unweighted_dist']
+            G_pruned[i][j]['weight'] = G[i][j]['weight']
+
             preserved_nodes.add(i)
             preserved_nodes.add(j)
 
@@ -309,7 +313,7 @@ def prune_adaptive(G, X, eps, lda, delta=1.0, weight='unweighted_dist', cluster=
             # assign this edge 0 curvature
             G_pruned[node_idx][nearest_neighbor]['ricciCurvature'] = 0
             G_pruned[node_idx][nearest_neighbor]['scaledricciCurvature'] = 0
-    
+            
     assert len(G.nodes()) == len(G_pruned.nodes()), "The number of preserved nodes does not match the number of nodes in the pruned graph."
 
     preserved_orcs = []
