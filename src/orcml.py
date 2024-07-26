@@ -269,7 +269,7 @@ def prune_adaptive(G, X, eps, lda, delta=1.0, weight='unweighted_dist', cluster=
         if i not in G_prime.nodes() or j not in G_prime.nodes():
             continue
         try:
-            d_G_prime = nx.shortest_path_length(G_prime, source=i, target=j, weight=weight)
+            d_G_prime = nx.shortest_path_length(G_prime, source=i, target=j, weight="weight") # use euclidean distance
         except nx.NetworkXNoPath:
             d_G_prime = np.inf
         print()
