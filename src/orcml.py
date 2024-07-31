@@ -223,7 +223,7 @@ def prune_adaptive(G, X, eps, lda, delta=1.0, weight='unweighted_dist', cluster=
 
     for i, j, d in G.edges(data=True):
         bad_edges.append((i,j)) if cluster is not None and cluster[i] != cluster[j] else None
-        threshold = -2 + delta + 3*(1/(G.degree(i)+1) + 1/(G.degree(j)+1))
+        threshold = -1 + 2*(2-2*delta)
         if cluster is not None and cluster[i] != cluster[j]:
             print()
             print(f"Bad edge: {i} - {j}")
@@ -250,21 +250,21 @@ def prune_adaptive(G, X, eps, lda, delta=1.0, weight='unweighted_dist', cluster=
     G_pruned = G_prime.copy()
     preserved_nodes = set()
 
-    # check distance d_G'(x,y) for all x,y in C
-    threshold = 2/(np.sqrt(5)-1)*(7*np.pi/5)*(1-lda)
-    print(f"Distance Threshold: {threshold}")
     for num, (i, j) in enumerate(C):
+        # check distance d_G'(x,y) for all x,y in C
+        threshold = 2/(np.sqrt(5)-1)*(7*np.pi/5)*(1-lda)
+
         if eps is not None:
             threshold *= eps
         else:
             # find the edge distance for all edges incident to i or j
             dists = []
             for k in G.neighbors(i):
-                dists.append(G[i][k][weight])
+                dists.append(G[i][k]['weight'])
             for k in G.neighbors(j):
-                dists.append(G[j][k][weight])
-            eps = np.max(dists)
-            threshold *= eps
+                dists.append(G[j][k]['weight'])
+            effective_eps = np.max(dists)
+            threshold *= effective_eps
 
         if i not in G_prime.nodes() or j not in G_prime.nodes():
             continue
@@ -327,13 +327,17 @@ def prune_adaptive(G, X, eps, lda, delta=1.0, weight='unweighted_dist', cluster=
         print(f'{num_bad_edges_removed} of {num_removed_edges} removed edges were bad edges.')
         print(f'{num_bad_edges_removed} of {total_bad_edges} total bad edges were removed.')
         print(f'All bad edges in C? {all([edge in C for edge in bad_edges])}')
-
     A_pruned = nx.adjacency_matrix(G_pruned).toarray()
     return {
         'G_pruned': G_pruned,
+        'G_prime': G_prime,
         'A_pruned': A_pruned,
         'preserved_orcs': preserved_orcs,
         'preserved_scaled_orcs': preserved_scaled_orcs,
+        'N_good_removed': num_removed_edges - num_bad_edges_removed if cluster is not None else None,
+        'N_bad_removed': num_bad_edges_removed if cluster is not None else None,
+        'N_good_total': len(C) - len(bad_edges) if cluster is not None else None,
+        'N_bad_total': len(bad_edges) if cluster is not None else None,
     }
             
 
