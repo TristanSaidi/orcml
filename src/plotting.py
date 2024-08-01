@@ -10,7 +10,7 @@ from src.eval_utils import *
 
 # plotting functions
 
-def plot_data_2D(X, y, title, axes=False, exp_name=None, filename=None):
+def plot_data_2D(X, y, title, node_size=10, axes=False, exp_name=None, filename=None):
     """
     Plot the data with the points colored by class membership.
     Parameters
@@ -23,7 +23,7 @@ def plot_data_2D(X, y, title, axes=False, exp_name=None, filename=None):
         The title of the plot.
     """
     plt.figure(figsize=(6, 6))
-    plt.scatter(X[:, 0], X[:, 1], c=y, cmap=plt.cm.Spectral)
+    plt.scatter(X[:, 0], X[:, 1], c=y, cmap=plt.cm.Spectral, s=node_size)
     plt.title(title)
     plt.gca().set_aspect('equal')
     if not axes:
@@ -35,7 +35,7 @@ def plot_data_2D(X, y, title, axes=False, exp_name=None, filename=None):
         path = os.path.join(exp_dir, filename)
         plt.savefig(path)
 
-def plot_graph_2D(X, graph, title, node_color='#1f78b4', edge_color='lightgray', node_size=10, colorbar=False, exp_name=None, filename=None):
+def plot_graph_2D(X, graph, title, node_color='#1f78b4', edge_color='lightgray', node_size=10, edge_width=1.0, colorbar=False, exp_name=None, filename=None):
     """
     Plot the graph with the desired node or edge coloring.
     Parameters
@@ -51,8 +51,8 @@ def plot_graph_2D(X, graph, title, node_color='#1f78b4', edge_color='lightgray',
     edge_color : str
         The color of the edges.
     """
-    plt.figure()
-    nx.draw(graph, X, node_color=node_color, edge_color=edge_color, node_size=node_size, cmap=plt.cm.Spectral, edge_cmap=plt.cm.coolwarm, edge_vmin=-1, edge_vmax=1)
+    plt.figure(dpi=1200)
+    nx.draw(graph, X, node_color=node_color, edge_color=edge_color, node_size=node_size, cmap=plt.cm.Spectral, edge_cmap=plt.cm.coolwarm, edge_vmin=-1, edge_vmax=1, width=edge_width)
     plt.title(title)
     plt.gca().set_aspect('equal')
     if colorbar:
@@ -169,7 +169,7 @@ def plot_emb(Y, color, title, cmap=plt.cm.Spectral, exp_name=None, filename=None
     title : str
         The title of the plot.
     """
-    plt.figure()
+    plt.figure(dpi=1200)
     if Y.shape[1] == 1:
         plt.scatter(Y, np.zeros(Y.shape), c=color, cmap=cmap, s=10)
     else:
@@ -227,7 +227,7 @@ def histogram(data, title, xlabel, ylabel, legend=None, bins=20, exp_name=None, 
     """
     Plot a histogram of the data.
     """
-    plt.figure()
+    plt.figure(dpi=1200)
     plt.hist(data, bins, density=True);
     plt.title(title)
     plt.xlabel(xlabel)
@@ -246,7 +246,7 @@ def plot_line_graph(x, y, title, xlabel, ylabel, legend=None, std=None, exp_name
     Plot a line graph with the given parameters.
     """
     sns.set_theme()
-    plt.figure()
+    plt.figure(dpi=1200)
     plt.plot(x, y)
     plt.title(title)
     plt.xlabel(xlabel)
@@ -271,7 +271,7 @@ def plot_scatter(x, y, title, xlabel, ylabel, legend=None, color=None, exp_name=
         x = [x]
         y = [y]
     sns.set_theme()
-    plt.figure()
+    plt.figure(dpi=1200)
     for i in range(len(x)):
         if color is not None:
             plt.scatter(x[i], y[i], c=color[i])
