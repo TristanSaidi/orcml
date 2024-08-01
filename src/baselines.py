@@ -276,3 +276,62 @@ def prune_density(G, data, thresh):
         'preserved_scaled_orcs': preserved_scaled_orcs
     }
  
+def prune_distance(G, data, thresh):
+    """
+    Prune the graph based on distance threshold.
+    
+    Parameters
+    ----------
+    G : networkx.Graph
+        The input graph.
+    data : array-like, shape (n_samples, n_features)
+        The input data.
+    thresh : float
+        The distance threshold for pruning edges.
+    
+    Returns
+    -------
+    networkx.Graph
+        The pruned graph.
+    """
+    G_pruned = G.copy()
+    preserved_nodes = set()
+    for edge in list(G_pruned.edges()):
+        v1 = edge[0]
+        v2 = edge[1]
+        # compute distance between v1 and v2
+        dist = np.linalg.norm(data[v1] - data[v2])
+        if dist > thresh:
+            G_pruned.remove_edge(v1, v2)
+        else:
+            preserved_nodes.add(v1)
+            preserved_nodes.add(v2)
+    
+    if len(preserved_nodes) != len(G.nodes()):
+        print("Warning: There are isolated nodes in the graph. This will be artificially fixed.")
+        missing_nodes = set(G.nodes()).difference(preserved_nodes)
+        for node_idx in missing_nodes:
+            # find nearest neighbor
+            isolated_node = data[node_idx]
+            dists = np.linalg.norm(data - isolated_node, axis=1)
+            dists[node_idx] = np.inf
+            nearest_neighbor = np.argmin(dists)
+            G_pruned.add_edge(node_idx, nearest_neighbor, weight=dists[nearest_neighbor])
+            # assign this edge 0 curvature
+            G_pruned[node_idx][nearest_neighbor]['ricciCurvature'] = 0
+            G_pruned[node_idx][nearest_neighbor]['scaledricciCurvature'] = 0
+    
+    preserved_orcs = []
+    preserved_scaled_orcs = []
+    for i, j, d in G_pruned.edges(data=True):
+        preserved_orcs.append(d['ricciCurvature'])
+        preserved_scaled_orcs.append(d['scaledricciCurvature'])
+
+    assert len(G.nodes()) == len(G_pruned.nodes()), "The number of preserved nodes does not match the number of nodes in the pruned graph."
+    A_pruned = nx.adjacency_matrix(G_pruned).toarray()
+    return {
+        'G_pruned': G_pruned,
+        'A_pruned': A_pruned,
+        'preserved_orcs': preserved_orcs,
+        'preserved_scaled_orcs': preserved_scaled_orcs
+    }
