@@ -125,21 +125,20 @@ def graph_orc(G, weight='weight'):
     }
 
 
-def prune_ORC(G, threshold, X, key='scaledricciCurvature', cluster=None):
+def prune_ORC(G, delta, X, cluster=None):
     """
     Prune the graph based on a threshold. Adjust the node coordinates and colors accordingly.
     Parameters
     ----------
     G : networkx.Graph
         The graph to prune.
-    threshold : float
+    delta : float
         The threshold for the scaled Ollivier-Ricci curvature.
     Returns
     -------
     G_pruned : networkx.Graph
         The pruned graph.
     """
-    assert key in ['ricciCurvature', 'scaledricciCurvature'], "Invalid key."
     G_pruned = nx.Graph()
     preserved_nodes = set()
     
@@ -148,9 +147,11 @@ def prune_ORC(G, threshold, X, key='scaledricciCurvature', cluster=None):
     total_bad_edges = 0
     num_bad_edges_removed = 0 # edges with vertices in different clusters (if cluster is not None)
 
+    threshold = -1 + 2*(2-2*delta)
+
     for i, j, d in G.edges(data=True):
         total_bad_edges += 1 if cluster is not None and cluster[i] != cluster[j] else 0
-        if d[key] > threshold:
+        if d['ricciCurvature'] > threshold:
             G_pruned.add_edge(i, j, weight=d['weight'])
             preserved_nodes.add(i)
             preserved_nodes.add(j)
@@ -194,6 +195,10 @@ def prune_ORC(G, threshold, X, key='scaledricciCurvature', cluster=None):
         'A_pruned': A_pruned,
         'preserved_orcs': preserved_orcs,
         'preserved_scaled_orcs': preserved_scaled_orcs,
+        'N_good_removed': num_removed_edges - num_bad_edges_removed if cluster is not None else None,
+        'N_bad_removed': num_bad_edges_removed if cluster is not None else None,
+        'N_good_total': len(G.edges()) - total_bad_edges if cluster is not None else None,
+        'N_bad_total': total_bad_edges if cluster is not None else None,
     }
 
 def prune_adaptive(G, X, eps, lda, delta=1.0, weight='unweighted_dist', cluster=None):
@@ -221,9 +226,11 @@ def prune_adaptive(G, X, eps, lda, delta=1.0, weight='unweighted_dist', cluster=
     G_prime = nx.Graph()
     bad_edges = []
 
+    threshold = -1 + 2*(2-2*delta)
+
     for i, j, d in G.edges(data=True):
         bad_edges.append((i,j)) if cluster is not None and cluster[i] != cluster[j] else None
-        threshold = -1 + 2*(2-2*delta)
+        
         if cluster is not None and cluster[i] != cluster[j]:
             print()
             print(f"Bad edge: {i} - {j}")
