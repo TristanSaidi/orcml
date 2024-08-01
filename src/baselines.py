@@ -1,9 +1,6 @@
 import networkx as nx
-from src.OllivierRicci import OllivierRicci
-from sklearn import neighbors
+from scipy.stats import gaussian_kde
 import numpy as np
-import multiprocessing as mp
-
 
 def prune_random(G, data, p):
     """
@@ -137,12 +134,10 @@ def prune_bisection(G, data, n):
 def prune_mst(G, data, thresh):
     """
     Prune the graph with MST based method. Proposed by 
-
     (Richard Zemel, Miguel Carreira-Perpiñán. Proximity graphs for clustering and manifold learning)
     and 
     (Shao Chao, Huanh Hou-kuan, Zhou Lian-wei. P-ISOMAP: A New ISOMAP Based Data Visualization Algorithm with Less Sensitivity to the Neighborhood Size)
     
-
     Parameters
     ----------
     G : networkx.Graph
@@ -214,6 +209,70 @@ def prune_mst(G, data, thresh):
     }
     
 
+def prune_density(G, data, thresh):
+    """
+    Prune the graph based on density estimation.
 
+    Parameters
+    ----------
+    G : networkx.Graph
+        The input graph.
+    data : array-like, shape (n_samples, n_features)
+        The input data.
+    thresh : float
+        The density threshold for pruning edges.
 
+    Returns
+    -------
+    networkx.Graph
+        The pruned graph.
+    """
+
+    G_pruned = G.copy()
+    # compute density
+    kde = gaussian_kde(data.T)
+    # prune edges
+    preserved_nodes = set()
+    for edge in list(G_pruned.edges()):
+        v1 = edge[0]
+        v2 = edge[1]
+        # compute density at midpoint
+        x_i = data[v1]
+        x_j = data[v2]
+        x_ij = (x_i + x_j) / 2
+        density_ij = kde.pdf(x_ij)
+        if density_ij < thresh:
+            G_pruned.remove_edge(v1, v2)
+        else:
+            preserved_nodes.add(v1)
+            preserved_nodes.add(v2)
+    
+    if len(preserved_nodes) != len(G.nodes()):
+        print("Warning: There are isolated nodes in the graph. This will be artificially fixed.")
+        missing_nodes = set(G.nodes()).difference(preserved_nodes)
+        for node_idx in missing_nodes:
+            # find nearest neighbor
+            isolated_node = data[node_idx]
+            dists = np.linalg.norm(data - isolated_node, axis=1)
+            dists[node_idx] = np.inf
+            nearest_neighbor = np.argmin(dists)
+            G_pruned.add_edge(node_idx, nearest_neighbor, weight=dists[nearest_neighbor])
+            # assign this edge 0 curvature
+            G_pruned[node_idx][nearest_neighbor]['ricciCurvature'] = 0
+            G_pruned[node_idx][nearest_neighbor]['scaledricciCurvature'] = 0
+    
+    preserved_orcs = []
+    preserved_scaled_orcs = []
+    for i, j, d in G_pruned.edges(data=True):
+        preserved_orcs.append(d['ricciCurvature'])
+        preserved_scaled_orcs.append(d['scaledricciCurvature'])
+
+    assert len(G.nodes()) == len(G_pruned.nodes()), "The number of preserved nodes does not match the number of nodes in the pruned graph."
+    A_pruned = nx.adjacency_matrix(G_pruned).toarray()
+    return {
+        'G_pruned': G_pruned,
+        'A_pruned': A_pruned,
+        'preserved_orcs': preserved_orcs,
+        'preserved_scaled_orcs': preserved_scaled_orcs
+    }
  
