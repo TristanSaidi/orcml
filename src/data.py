@@ -45,7 +45,16 @@ def concentric_circles(n_points, factor, noise, supersample=False, supersample_f
         cluster = cluster[subsample_indices]
     else:
         circles_supersample = None
-    circles += noise * np.random.randn(*circles.shape)
+    
+    # clip noise and resample if necessary
+    thresh = 0.275
+    z =  noise*np.random.randn(*circles.shape)
+    resample_indices = np.where(np.linalg.norm(z, axis=1) > thresh)[0]
+    while len(resample_indices) > 0:
+        z[resample_indices] = noise*np.random.randn(*z[resample_indices].shape)
+        resample_indices = np.where(np.linalg.norm(z, axis=1) > thresh)[0]
+    circles += z
+
     return_dict = {
         'data': circles,
         'cluster': cluster,
