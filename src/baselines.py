@@ -20,12 +20,14 @@ def prune_random(G, data, p):
     """
     G_pruned = G.copy()
     preserved_nodes = set()
-    for edge in list(G_pruned.edges()):
+    preserved_edges = []
+    for idx, edge in enumerate(list(G_pruned.edges())):
         if np.random.rand() < p:
             G_pruned.remove_edge(*edge)
         else:
             preserved_nodes.add(edge[0])
             preserved_nodes.add(edge[1])
+            preserved_edges.append(idx)
     
     if len(preserved_nodes) < G_pruned.number_of_nodes():
         print("Warning: There are isolated nodes in the graph. This will be artificially fixed.")
@@ -40,11 +42,21 @@ def prune_random(G, data, p):
             # assign this edge 0 curvature
             G_pruned[node_idx][nearest_neighbor]['ricciCurvature'] = 0
             G_pruned[node_idx][nearest_neighbor]['scaledricciCurvature'] = 0
+    
+    preserved_orcs = []
+    preserved_scaled_orcs = []
+    for i, j, d in G_pruned.edges(data=True):
+        preserved_orcs.append(d['ricciCurvature'])
+        preserved_scaled_orcs.append(d['scaledricciCurvature'])
+
     assert len(G.nodes()) == len(G_pruned.nodes()), "The number of preserved nodes is not equal to the number of nodes in the graph."
     A_pruned = nx.adjacency_matrix(G_pruned).toarray()
     return {
         'G_pruned': G_pruned,
-        'A_pruned': A_pruned
+        'A_pruned': A_pruned,
+        'preserved_edges': preserved_edges,
+        'preserved_orcs': preserved_orcs,
+        'preserved_scaled_orcs': preserved_scaled_orcs
     }
 
 def prune_bisection(G, data, n):
