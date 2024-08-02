@@ -3,6 +3,7 @@ from src.OllivierRicci import OllivierRicci
 from sklearn import neighbors
 import numpy as np
 import multiprocessing as mp
+import tqdm
 
 # method
 
@@ -124,15 +125,15 @@ def graph_orc(G, weight='weight'):
         'wasserstein_distances': wasserstein_distances,
     }
 
-def get_edge_stats(G, cluster=None):
-    edge_labels = get_edge_labels(G, cluster)
+def get_edge_stats(G, cluster=None, data_supersample_dict=None):
+    edge_labels = get_edge_labels(G, cluster, data_supersample_dict)
     num_good_edges = sum(edge_labels)
     num_bad_edges = len(edge_labels) - num_good_edges
     return num_good_edges, num_bad_edges
 
-def get_edge_labels(G, cluster=None):
+def get_edge_labels(G, cluster=None, data_supersample_dict=None):
     if cluster is None:
-        return get_edge_labels_from_geodesic(G)
+        return get_edge_labels_from_geodesic(G, data_supersample_dict)
     else:
         return get_edge_labels_from_cluster(G, cluster)
 
@@ -158,8 +159,53 @@ def get_edge_labels_from_cluster(G, cluster):
             edge_labels.append(0)
     return edge_labels
 
-def get_edge_labels_from_geodesic(G):
-    pass
+def get_edge_labels_from_geodesic(G, data_supersample_dict):
+    """ 
+    
+    Get the edge labels (good/bad) from the estimated noiseless geodesic distance.
+
+    Parameters
+    ----------
+    G : networkx.Graph
+        The graph.
+    data_supersample_dict : dict
+        The dictionary containing the supersampled data and subsample indices.
+    
+    Returns
+    -------
+    edge_labels : list
+        The edge labels.
+    """
+
+    data_supersample = data_supersample_dict['data_supersample']
+    subsample_indices = data_supersample_dict['subsample_indices']
+
+    # make a new graph with the supersampled data
+    G_supersample, _ = make_prox_graph(data_supersample, mode='nbrs', n_neighbors=20)
+
+    edge_labels = []
+    
+    with tqdm.tqdm(total=len(G.edges()), desc='Computing edge labels') as pbar:
+        for i, j, _ in G.edges(data=True):
+            # find geodesic distance in the supersampled graph
+            d_G_supersample = nx.shortest_path_length(G_supersample, source=subsample_indices[i], target=subsample_indices[j], weight='weight')
+            
+            # find max distance between i and i's neighbors, j and j's neighbors
+            distances_i = []
+            distances_j = []
+            for k in G.neighbors(i):
+                distances_i.append(G[i][k]['weight'])
+            for k in G.neighbors(j):
+                distances_j.append(G[j][k]['weight'])
+            
+            effective_eps = max(np.max(distances_i), np.max(distances_j))
+            if d_G_supersample > 10*effective_eps:
+                edge_labels.append(0)
+            else:
+                edge_labels.append(1)
+            pbar.update(1)
+    return edge_labels
+
 
 def prune_orc(G, delta, X, verbose=False):
     """
