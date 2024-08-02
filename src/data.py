@@ -5,7 +5,7 @@ import torch
 import torchvision
 # Data generation functions
 
-def concentric_circles(n_points, factor, noise, supersample=False, supersample_factor=2.5):
+def concentric_circles(n_points, factor, noise, supersample=False, supersample_factor=2.5, noise_thresh=0.275):
     """ 
     Generate concentric circles with noise. 
     Parameters
@@ -47,12 +47,11 @@ def concentric_circles(n_points, factor, noise, supersample=False, supersample_f
         circles_supersample = None
     
     # clip noise and resample if necessary
-    thresh = 0.275
     z =  noise*np.random.randn(*circles.shape)
-    resample_indices = np.where(np.linalg.norm(z, axis=1) > thresh)[0]
+    resample_indices = np.where(np.linalg.norm(z, axis=1) > noise_thresh)[0]
     while len(resample_indices) > 0:
         z[resample_indices] = noise*np.random.randn(*z[resample_indices].shape)
-        resample_indices = np.where(np.linalg.norm(z, axis=1) > thresh)[0]
+        resample_indices = np.where(np.linalg.norm(z, axis=1) > noise_thresh)[0]
     circles += z
 
     return_dict = {
@@ -63,7 +62,7 @@ def concentric_circles(n_points, factor, noise, supersample=False, supersample_f
     }
     return return_dict
 
-def swiss_roll(n_points, noise, dim=3, supersample=False, supersample_factor=2.5):
+def swiss_roll(n_points, noise, dim=3, supersample=False, supersample_factor=1.5, noise_thresh=0.275):
     """
     Generate a Swiss roll dataset.
     Parameters
@@ -98,10 +97,18 @@ def swiss_roll(n_points, noise, dim=3, supersample=False, supersample_factor=2.5
     else:
         swiss_roll_supersample = None
         subsample_indices = None
-    swiss_roll += noise * np.random.randn(*swiss_roll.shape)
+
+    # clip noise and resample if necessary
+    z =  noise*np.random.randn(*swiss_roll.shape)
+    resample_indices = np.where(np.linalg.norm(z, axis=1) > noise_thresh)[0]
+    while len(resample_indices) > 0:
+        z[resample_indices] = noise*np.random.randn(*z[resample_indices].shape)
+        resample_indices = np.where(np.linalg.norm(z, axis=1) > noise_thresh)[0]
+    swiss_roll += z
+
     return_dict = {
         'data': swiss_roll,
-        'cluster': color,
+        'cluster': None,
         'data_supersample': swiss_roll_supersample,
         'subsample_indices': subsample_indices
     }
