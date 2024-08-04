@@ -81,8 +81,9 @@ def prune_bisection(G, data, n):
 
     G_pruned = G.copy()
     preserved_nodes = set()
+    preserved_edges = []
     # iterate over all edges
-    for edge in list(G.edges()):
+    for idx, edge in enumerate(list(G.edges())):
         x_i = data[edge[0]]
         x_j = data[edge[1]]
         # find midpoint
@@ -111,6 +112,7 @@ def prune_bisection(G, data, n):
         else:
             preserved_nodes.add(edge[0])
             preserved_nodes.add(edge[1])
+            preserved_edges.append(idx)
     
     if len(preserved_nodes) != len(G.nodes()):
         print("Warning: There are isolated nodes in the graph. This will be artificially fixed.")
@@ -138,6 +140,7 @@ def prune_bisection(G, data, n):
     return {
         'G_pruned': G_pruned,
         'A_pruned': A_pruned,
+        'preserved_edges': preserved_edges,
         'preserved_orcs': preserved_orcs,
         'preserved_scaled_orcs': preserved_scaled_orcs
     }
@@ -180,7 +183,8 @@ def prune_mst(G, data, thresh):
     assert len(mst_combined.edges()) == len(mst_1.edges()) + len(mst_2.edges()), "The number of edges in the combined MST does not match the number of edges in the graph."
     # prune edges
     preserved_nodes = set()
-    for edge in list(G_pruned.edges()):
+    preserved_edges = []
+    for idx, edge in enumerate(list(G_pruned.edges())):
         v1 = edge[0]
         v2 = edge[1]
         # shortest path length between v1 and v2 in the combined MST
@@ -190,6 +194,7 @@ def prune_mst(G, data, thresh):
         else:
             preserved_nodes.add(v1)
             preserved_nodes.add(v2)
+            preserved_edges.append(idx)
     
     if len(preserved_nodes) != len(G.nodes()):
         print("Warning: There are isolated nodes in the graph. This will be artificially fixed.")
@@ -216,6 +221,7 @@ def prune_mst(G, data, thresh):
     return {
         'G_pruned': G_pruned,
         'A_pruned': A_pruned,
+        'preserved_edges': preserved_edges,
         'preserved_orcs': preserved_orcs,
         'preserved_scaled_orcs': preserved_scaled_orcs
     }
@@ -245,7 +251,8 @@ def prune_density(G, data, thresh):
     kde = gaussian_kde(data.T)
     # prune edges
     preserved_nodes = set()
-    for edge in list(G_pruned.edges()):
+    preserved_edges = []
+    for idx, edge in enumerate(list(G_pruned.edges())):
         v1 = edge[0]
         v2 = edge[1]
         # compute density at midpoint
@@ -258,6 +265,7 @@ def prune_density(G, data, thresh):
         else:
             preserved_nodes.add(v1)
             preserved_nodes.add(v2)
+            preserved_edges.append(idx)
     
     if len(preserved_nodes) != len(G.nodes()):
         print("Warning: There are isolated nodes in the graph. This will be artificially fixed.")
@@ -284,6 +292,7 @@ def prune_density(G, data, thresh):
     return {
         'G_pruned': G_pruned,
         'A_pruned': A_pruned,
+        'preserved_edges': preserved_edges,
         'preserved_orcs': preserved_orcs,
         'preserved_scaled_orcs': preserved_scaled_orcs
     }
@@ -308,7 +317,8 @@ def prune_distance(G, data, thresh):
     """
     G_pruned = G.copy()
     preserved_nodes = set()
-    for edge in list(G_pruned.edges()):
+    preserved_edges = []
+    for idx, edge in enumerate(list(G_pruned.edges())):
         v1 = edge[0]
         v2 = edge[1]
         # compute distance between v1 and v2
@@ -318,6 +328,7 @@ def prune_distance(G, data, thresh):
         else:
             preserved_nodes.add(v1)
             preserved_nodes.add(v2)
+            preserved_edges.append(idx)
     
     if len(preserved_nodes) != len(G.nodes()):
         print("Warning: There are isolated nodes in the graph. This will be artificially fixed.")
@@ -344,6 +355,7 @@ def prune_distance(G, data, thresh):
     return {
         'G_pruned': G_pruned,
         'A_pruned': A_pruned,
+        'preserved_edges': preserved_edges,
         'preserved_orcs': preserved_orcs,
         'preserved_scaled_orcs': preserved_scaled_orcs
     }
