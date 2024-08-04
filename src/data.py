@@ -62,6 +62,57 @@ def concentric_circles(n_points, factor, noise, supersample=False, supersample_f
     }
     return return_dict
 
+def moons(n_points, noise, supersample=False, supersample_factor=2.5, noise_thresh=0.275):
+    """
+    Generate a moons dataset.
+    Parameters
+    ----------
+    n_points : int
+        The number of points to generate.
+    noise : float
+        The standard deviation of the Gaussian noise.
+    Returns
+    -------
+    Dictionary providing the following keys:
+        data : array-like, shape (n_points, 2)
+            The generated moons.
+        cluster : array-like, shape (n_points,)
+            The integer labels for class membership of each sample.
+        data_supersample : array-like, shape (n_points*supersample_factor, 2)
+            The supersampled moons.
+        subsample_indices : list
+            The indices of the subsampled moons.
+    """
+    if supersample:
+        N_total = int(n_points * supersample_factor)
+        subsample_indices = np.random.choice(N_total, n_points, replace=False)
+    else:
+        N_total = n_points
+        subsample_indices = None
+    moons, cluster = datasets.make_moons(n_samples=N_total, noise=0.0)
+    if supersample:
+        moons_supersample = moons.copy()
+        moons = moons[subsample_indices]
+        cluster = cluster[subsample_indices]
+    else:
+        moons_supersample = None
+
+    # clip noise and resample if necessary
+    z =  noise*np.random.randn(*moons.shape)
+    resample_indices = np.where(np.linalg.norm(z, axis=1) > noise_thresh)[0]
+    while len(resample_indices) > 0:
+        z[resample_indices] = noise*np.random.randn(*z[resample_indices].shape)
+        resample_indices = np.where(np.linalg.norm(z, axis=1) > noise_thresh)[0]
+    moons += z
+
+    return_dict = {
+        'data': moons,
+        'cluster': cluster,
+        'data_supersample': moons_supersample,
+        'subsample_indices': subsample_indices
+    }
+    return return_dict
+
 def swiss_roll(n_points, noise, dim=3, supersample=False, supersample_factor=1.5, noise_thresh=0.275):
     """
     Generate a Swiss roll dataset.
@@ -113,6 +164,62 @@ def swiss_roll(n_points, noise, dim=3, supersample=False, supersample_factor=1.5
         'subsample_indices': subsample_indices
     }
     return return_dict
+
+
+
+def s_curve(n_points, noise, supersample=False, supersample_factor=2.5, noise_thresh=0.275, dim=2):
+    """
+    Generate an S-curve dataset.
+    Parameters
+    ----------
+    n_points : int
+        The number of points to generate.
+    noise : float
+        The standard deviation of the Gaussian noise.
+    Returns
+    -------
+    Dictionary providing the following keys:
+        data : array-like, shape (n_points, 3)
+            The generated S-curve.
+        cluster : array-like, shape (n_points,)
+            The integer labels for class membership of each sample.
+        data_supersample : array-like, shape (n_points*supersample_factor, 3)
+            The supersampled S-curve.
+        subsample_indices : list
+            The indices of the subsampled S-curve.
+    """
+    if supersample:
+        N_total = int(n_points * supersample_factor)
+        subsample_indices = np.random.choice(N_total, n_points, replace=False)
+    else:
+        N_total = n_points
+        subsample_indices = None
+    s_curve, cluster = datasets.make_s_curve(n_samples=N_total, noise=0.0)
+    if dim == 2:
+        s_curve = s_curve[:, [0, 2]]
+    if supersample:
+        s_curve_supersample = s_curve.copy()
+        s_curve = s_curve[subsample_indices]
+        cluster = cluster[subsample_indices]
+    else:
+        s_curve_supersample = None
+
+    # clip noise and resample if necessary
+    z =  noise*np.random.randn(*s_curve.shape)
+    resample_indices = np.where(np.linalg.norm(z, axis=1) > noise_thresh)[0]
+    while len(resample_indices) > 0:
+        z[resample_indices] = noise*np.random.randn(*z[resample_indices].shape)
+        resample_indices = np.where(np.linalg.norm(z, axis=1) > noise_thresh)[0]
+    s_curve += z
+
+    return_dict = {
+        'data': s_curve,
+        'cluster': None,
+        'data_supersample': s_curve_supersample,
+        'subsample_indices': subsample_indices
+    }
+    return return_dict
+
 
 def torus(n_points, noise, r=1.5, R=5, double=False, supersample=False, supersample_factor=2.5):
     """
