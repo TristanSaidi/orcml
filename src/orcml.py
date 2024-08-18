@@ -131,9 +131,9 @@ def get_edge_stats(G, cluster=None, data_supersample_dict=None):
     num_bad_edges = len(edge_labels) - num_good_edges
     return num_good_edges, num_bad_edges
 
-def get_edge_labels(G, cluster=None, data_supersample_dict=None):
+def get_edge_labels(G, cluster=None, data_supersample_dict=None, scale=None):
     if cluster is None:
-        return get_edge_labels_from_geodesic(G, data_supersample_dict)
+        return get_edge_labels_from_geodesic(G, data_supersample_dict, scale)
     else:
         return get_edge_labels_from_cluster(G, cluster)
 
@@ -159,7 +159,7 @@ def get_edge_labels_from_cluster(G, cluster):
             edge_labels.append(0)
     return edge_labels
 
-def get_edge_labels_from_geodesic(G, data_supersample_dict):
+def get_edge_labels_from_geodesic(G, data_supersample_dict, scale=10):
     """ 
     
     Get the edge labels (good/bad) from the estimated noiseless geodesic distance.
@@ -199,7 +199,7 @@ def get_edge_labels_from_geodesic(G, data_supersample_dict):
                 distances_j.append(G[j][k]['weight'])
             
             effective_eps = max(np.max(distances_i), np.max(distances_j))
-            if d_G_supersample > 10*effective_eps:
+            if d_G_supersample > scale*effective_eps:
                 edge_labels.append(0)
             else:
                 edge_labels.append(1)
@@ -228,11 +228,13 @@ def prune_orc(G, delta, X, verbose=False):
     num_removed_edges = 0
 
     threshold = -1 + 2*(2-2*delta) # threshold for the scaled Ollivier-Ricci curvature
-    for i, j, d in G.edges(data=True):
+    preserved_edges = []
+    for idx, (i, j, d) in enumerate(G.edges(data=True)):
         if d['ricciCurvature'] > threshold:
             G_pruned.add_edge(i, j, weight=d['weight'])
             preserved_nodes.add(i)
             preserved_nodes.add(j)
+            preserved_edges.append(idx)
             G_pruned[i][j]['ricciCurvature'] = d['ricciCurvature']
             G_pruned[i][j]['scaledricciCurvature'] = d['scaledricciCurvature']
             G_pruned[i][j]['wassersteinDistance'] = d['wassersteinDistance']
@@ -266,6 +268,7 @@ def prune_orc(G, delta, X, verbose=False):
     return {
         'G_pruned': G_pruned,
         'A_pruned': A_pruned,
+        'preserved_edges': preserved_edges,
         'preserved_orcs': preserved_orcs,
         'preserved_scaled_orcs': preserved_scaled_orcs,
     }
@@ -293,12 +296,12 @@ def prune_orcml(G, X, eps, lda, delta=1.0, weight='unweighted_dist', verbose=Fal
     # construct the candidate set C, and filtered graph G'
     C = []
     G_prime = nx.Graph()
-
     threshold = -1 + 2*(2-2*delta)
-
-    for i, j, d in G.edges(data=True):
+    candidate_edge_indices = []
+    for idx, (i, j, d) in enumerate(G.edges(data=True)):
         if d['ricciCurvature'] < threshold:
             C.append((i,j))
+            candidate_edge_indices.append(idx)
         else:
             G_prime.add_edge(i, j, weight=d[weight])
             G_prime[i][j]['ricciCurvature'] = d['ricciCurvature']
@@ -314,10 +317,11 @@ def prune_orcml(G, X, eps, lda, delta=1.0, weight='unweighted_dist', verbose=Fal
 
     G_pruned = G_prime.copy()
     preserved_nodes = set()
+    preserved_edges = list(range(len(G.edges())))
 
     for num, (i, j) in enumerate(C):
         # check distance d_G'(x,y) for all x,y in C
-        threshold = 4*np.pi*(1-lda)
+        threshold = ((1-lda)*np.pi**2)/(2*np.sqrt(24*lda))
 
         if eps is not None:
             threshold *= eps
@@ -328,7 +332,7 @@ def prune_orcml(G, X, eps, lda, delta=1.0, weight='unweighted_dist', verbose=Fal
                 dists.append(G[i][k]['weight'])
             for k in G.neighbors(j):
                 dists.append(G[j][k]['weight'])
-            effective_eps = np.max(dists)
+            effective_eps = np.mean(dists)
             threshold *= effective_eps
 
         if i not in G_prime.nodes() or j not in G_prime.nodes():
@@ -346,6 +350,7 @@ def prune_orcml(G, X, eps, lda, delta=1.0, weight='unweighted_dist', verbose=Fal
         if d_G_prime > threshold:
             # G_pruned.remove_edge(i, j)
             num_removed_edges += 1
+            preserved_edges.remove(candidate_edge_indices[num])
         else:
             G_pruned.add_node(i)
             G_pruned.add_node(j)
@@ -355,7 +360,7 @@ def prune_orcml(G, X, eps, lda, delta=1.0, weight='unweighted_dist', verbose=Fal
             G_pruned[i][j]['wassersteinDistance'] = G[i][j]['wassersteinDistance']
             G_pruned[i][j]['unweighted_dist'] = G[i][j]['unweighted_dist']
             G_pruned[i][j]['weight'] = G[i][j]['weight']
-
+        
             preserved_nodes.add(i)
             preserved_nodes.add(j)
 
@@ -385,6 +390,7 @@ def prune_orcml(G, X, eps, lda, delta=1.0, weight='unweighted_dist', verbose=Fal
         'G_pruned': G_pruned,
         'G_prime': G_prime,
         'A_pruned': A_pruned,
+        'preserved_edges': preserved_edges,
         'preserved_orcs': preserved_orcs,
         'preserved_scaled_orcs': preserved_scaled_orcs,
     }
