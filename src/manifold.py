@@ -354,3 +354,18 @@ class Hyperboloid:
     def S(z):
         # actual scalar curvature at z when a = b = 2 and c = 1
         return -2/((5*z**2 + 1)**2)
+    
+
+##############################################################################
+# Cassini sampling
+##############################################################################
+
+class Cassini:
+    
+    def sample(N, e=1.01, a=1):
+        def r(theta):
+            return a*np.sqrt(np.cos(2*theta) + np.sqrt(e**4 - 1 + np.cos(2*theta)**2))
+        angles = 2*np.pi*np.random.rand(N)
+        Xpolar = [[theta, r(theta)] for theta in angles]
+        X = np.array([[x[1]*np.cos(x[0]), x[1]*np.sin(x[0])] for x in Xpolar])
+        return X, None

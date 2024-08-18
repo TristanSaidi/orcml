@@ -1,5 +1,5 @@
 from sklearn import datasets
-from src.manifold import Torus, Hyperboloid
+from src.manifold import Torus, Hyperboloid, Cassini
 import numpy as np
 import torch
 import torchvision
@@ -166,7 +166,6 @@ def swiss_roll(n_points, noise, dim=3, supersample=False, supersample_factor=1.5
     return return_dict
 
 
-
 def s_curve(n_points, noise, supersample=False, supersample_factor=2.5, noise_thresh=0.275, dim=2):
     """
     Generate an S-curve dataset.
@@ -216,6 +215,57 @@ def s_curve(n_points, noise, supersample=False, supersample_factor=2.5, noise_th
         'data': s_curve,
         'cluster': None,
         'data_supersample': s_curve_supersample,
+        'subsample_indices': subsample_indices
+    }
+    return return_dict
+
+
+def cassini(n_points, noise, supersample=False, supersample_factor=2.5, noise_thresh=0.275):
+    """
+    Generate a cassini oval dataset.
+    Parameters
+    ----------
+    n_points : int
+        The number of points to generate.
+    noise : float
+        The standard deviation of the Gaussian noise.
+    Returns
+    -------
+    Dictionary providing the following keys:
+        data : array-like, shape (n_points, 2)
+            The generated cassini oval.
+        cluster : array-like, shape (n_points,)
+            The integer labels for class membership of each sample.
+        data_supersample : array-like, shape (n_points*supersample_factor, 2)
+            The supersampled cassini oval.
+        subsample_indices : list
+            The indices of the subsampled cassini oval.
+    """
+    if supersample:
+        N_total = int(n_points * supersample_factor)
+        subsample_indices = np.random.choice(N_total, n_points, replace=False)
+    else:
+        N_total = n_points
+        subsample_indices = None
+    cassini, cluster = Cassini.sample(N=N_total)
+    if supersample:
+        cassini_supersample = cassini.copy()
+        cassini = cassini[subsample_indices]
+    else:
+        cassini_supersample = None
+
+    # clip noise and resample if necessary
+    z =  noise*np.random.randn(*cassini.shape)
+    resample_indices = np.where(np.linalg.norm(z, axis=1) > noise_thresh)[0]
+    while len(resample_indices) > 0:
+        z[resample_indices] = noise*np.random.randn(*z[resample_indices].shape)
+        resample_indices = np.where(np.linalg.norm(z, axis=1) > noise_thresh)[0]
+    cassini += z
+
+    return_dict = {
+        'data': cassini,
+        'cluster': cluster,
+        'data_supersample': cassini_supersample,
         'subsample_indices': subsample_indices
     }
     return return_dict
