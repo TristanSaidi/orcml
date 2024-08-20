@@ -171,7 +171,8 @@ class Torus:
             X_supersample = X.copy()
             X = X[subsample_indices]
             thetas = [thetas[i] for i in subsample_indices]
-            rotated = rotated[subsample_indices]
+            if rotated is not None:
+                rotated = rotated[subsample_indices]
         else:
             X_supersample = None
             subsample_indices = None
@@ -368,4 +369,19 @@ class Cassini:
         angles = 2*np.pi*np.random.rand(N)
         Xpolar = [[theta, r(theta)] for theta in angles]
         X = np.array([[x[1]*np.cos(x[0]), x[1]*np.sin(x[0])] for x in Xpolar])
+        return X, None
+    
+##############################################################################
+# Paraboloid sampling
+##############################################################################
+
+class Paraboloid:
+
+    def sample(N, r=1, z_max=2, offset=[0.0, 0.0, 0.0]):
+        # sample polar coordinates
+        thetas = 2*np.pi*np.random.rand(N)
+        r = r*np.random.rand(N)
+
+        # convert to Cartesian
+        X = np.array([[r[i]*np.cos(thetas[i]) + offset[0], r[i]*np.sin(thetas[i]) + offset[1], z_max * r[i]**2 + offset[2]] for i in range(N)])
         return X, None
