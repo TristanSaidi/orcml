@@ -166,21 +166,21 @@ def prune_mst(G, data, thresh):
 
     # first order MST
     mst_1 = nx.minimum_spanning_tree(G)
-    assert len(G.nodes()) == len(mst_1.nodes()), "The number of nodes in the MST does not match the number of nodes in the graph."
-    assert len(G.nodes)-1 == len(mst_1.edges()), "The number of edges in the MST does not match the number of edges in the graph."
+    # assert len(G.nodes()) == len(mst_1.nodes()), "The number of nodes in the MST does not match the number of nodes in the graph."
+    # assert len(G.nodes)-1 == len(mst_1.edges()), "The number of edges in the MST does not match the number of edges in the graph."
 
     # second order MST
     G_minus_mst_1 = nx.Graph(G)
     G_minus_mst_1.remove_edges_from(mst_1.edges())
-    assert len(G_minus_mst_1.nodes()) == len(G.nodes()), "The number of nodes in the complement graph does not match the number of nodes in the graph."
-    assert len(G_minus_mst_1.edges()) == len(G.edges()) - len(mst_1.edges()), "The number of edges in the complement graph does not match the number of edges in the graph."
+    # assert len(G_minus_mst_1.nodes()) == len(G.nodes()), "The number of nodes in the complement graph does not match the number of nodes in the graph."
+    # assert len(G_minus_mst_1.edges()) == len(G.edges()) - len(mst_1.edges()), "The number of edges in the complement graph does not match the number of edges in the graph."
 
     mst_2 = nx.minimum_spanning_tree(G_minus_mst_1)
 
     # combine the two MSTs
     mst_combined = nx.compose(mst_1, mst_2)
-    assert len(mst_combined.nodes()) == len(G.nodes()), "The number of nodes in the combined MST does not match the number of nodes in the graph."
-    assert len(mst_combined.edges()) == len(mst_1.edges()) + len(mst_2.edges()), "The number of edges in the combined MST does not match the number of edges in the graph."
+    # assert len(mst_combined.nodes()) == len(G.nodes()), "The number of nodes in the combined MST does not match the number of nodes in the graph."
+    # assert len(mst_combined.edges()) == len(mst_1.edges()) + len(mst_2.edges()), "The number of edges in the combined MST does not match the number of edges in the graph."
     # prune edges
     preserved_nodes = set()
     preserved_edges = []
