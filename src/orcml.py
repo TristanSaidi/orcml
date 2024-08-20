@@ -47,6 +47,19 @@ def make_prox_graph(X, mode='nbrs', n_neighbors=None, epsilon=None):
                 G.add_edge(i, j, weight=A[i, j])
                 if mode == 'eps':
                     G[i][j]['unweighted_dist'] = epsilon
+                else: # estimate effective epsilon as the average of the k-nearest neighbors
+                    # find the k-nearest neighbors of i
+                    dists = A[i, :]
+                    dists = dists[dists != 0]
+                    k_nearest = np.argsort(dists)[1:n_neighbors+1]
+                    effective_eps_i = np.mean(dists[k_nearest])
+                    # find the k-nearest neighbors of j
+                    dists = A[:,j]
+                    dists = dists[dists != 0]
+                    k_nearest = np.argsort(dists)[1:n_neighbors+1]
+                    effective_eps_j = np.mean(dists[k_nearest])
+                    effective_eps = max(effective_eps_i, effective_eps_j)
+                    G[i][j]['unweighted_dist'] = effective_eps
                 nodes.add(i)
                 nodes.add(j)
 
@@ -87,7 +100,7 @@ def adjust_orcs(orcs, clip=False, scale=True):
     orcs = (orcs - mean) / std if scale else orcs # convert to z-scores
     return orcs
 
-def graph_orc(G, weight='weight'):
+def graph_orc(G, weight='unweighted_dist'):
     """
     Compute the Ollivier-Ricci curvature on edges of a graph.
     Parameters
@@ -95,7 +108,7 @@ def graph_orc(G, weight='weight'):
     G : networkx.Graph
         The graph.
     weight : str
-        The edge attribute to use as the weight.
+        The edge attribute to use as the weight. Default is 'unweighted_dist'.
     alpha : float
         The alpha parameter for the Ollivier-Ricci curvature.
     Returns
