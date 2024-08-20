@@ -1,5 +1,5 @@
 from sklearn import datasets
-from src.manifold import Torus, Hyperboloid, Cassini
+from src.manifold import *
 import numpy as np
 import torch
 import torchvision
@@ -271,7 +271,7 @@ def cassini(n_points, noise, supersample=False, supersample_factor=2.5, noise_th
     return return_dict
 
 
-def torus(n_points, noise, r=1.5, R=5, double=False, supersample=False, supersample_factor=2.5):
+def torus(n_points, noise, r=1.5, R=5, double=False, supersample=False, supersample_factor=2.5, noise_thresh=0.275):
     """
     Generate a 2-torus dataset.
     Parameters
@@ -298,7 +298,15 @@ def torus(n_points, noise, r=1.5, R=5, double=False, supersample=False, supersam
     torus, thetas, cluster, torus_subsample, subsample_indices = Torus.sample(N=n_points, r=r, R=R, double=double, supersample=supersample, supersample_factor=supersample_factor)
     color = Torus.exact_curvatures(thetas, r, R)
     color = np.array(color)
-    torus += noise * np.random.randn(*torus.shape)
+    
+    # clip noise and resample if necessary
+    z =  noise*np.random.randn(*torus.shape)
+    resample_indices = np.where(np.linalg.norm(z, axis=1) > noise_thresh)[0]
+    while len(resample_indices) > 0:
+        z[resample_indices] = noise*np.random.randn(*z[resample_indices].shape)
+        resample_indices = np.where(np.linalg.norm(z, axis=1) > noise_thresh)[0]
+    torus += z
+    
     return_dict = {
         'data': torus,
         'cluster': cluster,
@@ -308,7 +316,7 @@ def torus(n_points, noise, r=1.5, R=5, double=False, supersample=False, supersam
     }
     return return_dict
 
-def hyperboloid(n_points, noise, double=False, supersample=False, supersample_factor=2.5):
+def hyperboloid(n_points, noise, double=False, supersample=False, supersample_factor=2.5, noise_thresh=0.275):
     """ 
     Generate a hyperboloid dataset.
     Parameters
@@ -327,7 +335,15 @@ def hyperboloid(n_points, noise, double=False, supersample=False, supersample_fa
     hyperboloid, cluster, hyperboloid_subsample, subsample_indices = Hyperboloid.sample(n_points, double=double, supersample=supersample, supersample_factor=supersample_factor)
     color = Hyperboloid.S(hyperboloid[:, 2]) # curvature (proxy) for color
     color = np.array(color)
-    hyperboloid += noise * np.random.randn(*hyperboloid.shape)
+
+    # clip noise and resample if necessary
+    z =  noise*np.random.randn(*hyperboloid.shape)
+    resample_indices = np.where(np.linalg.norm(z, axis=1) > noise_thresh)[0]
+    while len(resample_indices) > 0:
+        z[resample_indices] = noise*np.random.randn(*z[resample_indices].shape)
+        resample_indices = np.where(np.linalg.norm(z, axis=1) > noise_thresh)[0]
+    hyperboloid += z
+
     return_dict = {
         'data': hyperboloid,
         'cluster': cluster,
@@ -337,6 +353,163 @@ def hyperboloid(n_points, noise, double=False, supersample=False, supersample_fa
     }
     return return_dict
 
+def parab_and_hyp(n_points, noise, double=False, supersample=False, supersample_factor=2.5, noise_thresh=0.275):
+    """
+    Generate a paraboloid and hyperboloid dataset.
+    Parameters
+    
+    n_points : int
+        The number of samples to generate.
+    noise : float
+        The standard deviation of the Gaussian noise.
+    Returns
+    -------
+    Dictionary providing the following
+    data : array-like, shape (n_points, 3)
+        The generated samples.
+    cluster : array-like, shape (n_points,)
+        The integer labels for class membership of each sample.
+    color : array-like, shape (n_points,)
+        The color of each point.
+    data_supersample : array-like, shape (n_points*supersample_factor, 3)
+        The supersampled samples.
+    subsample_indices : list
+        The indices of the subsampled samples.
+    """
+
+    paraboloid, _ = Paraboloid.sample(N=n_points//2, r=2, z_max=0.75, offset=[0.0, 0.0, 1.75])
+    hyperboloid, _, _, _ = Hyperboloid.sample(N=n_points//2, a=0.6, c=1.0, B=4, double=False)
+    # rotate so that the hyperboloid is in the x-y plane
+    hyperboloid = np.dot(hyperboloid, np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]]))
+    # concatenate with the paraboloid
+    parab_and_hyp = np.concatenate([paraboloid, hyperboloid], axis=0)
+
+    # assign cluster labels
+    cluster = np.zeros(parab_and_hyp.shape[0])
+    cluster[parab_and_hyp.shape[0]//2:] = 1
+
+    # clip noise and resample if necessary
+    z =  noise*np.random.randn(*parab_and_hyp.shape)
+    resample_indices = np.where(np.linalg.norm(z, axis=1) > noise_thresh)[0]
+    while len(resample_indices) > 0:
+        z[resample_indices] = noise*np.random.randn(*z[resample_indices].shape)
+        resample_indices = np.where(np.linalg.norm(z, axis=1) > noise_thresh)[0]
+    parab_and_hyp += z
+
+    return_dict = {
+        'data': parab_and_hyp,
+        'cluster': cluster,
+        'color': cluster,
+        'data_supersample': None,
+        'subsample_indices': None
+    }
+    return return_dict
+
+def double_paraboloid(n_points, noise, supersample=False, supersample_factor=2.5, noise_thresh=0.275):
+    """
+    Generate a double paraboloid dataset.
+    Parameters
+    ----------
+    n_points : int
+        The number of points to generate.
+    noise : float
+        The standard deviation of the Gaussian noise.
+    Returns
+    -------
+    Dictionary providing the following
+    data : array-like, shape (n_points, 3)
+        The generated samples.
+    cluster : array-like, shape (n_points,)
+        The integer labels for class membership of each sample.
+    color : array-like, shape (n_points,)
+        The color of each point.
+    data_supersample : array-like, shape (n_points*supersample_factor, 3)
+        The supersampled samples.
+    subsample_indices : list
+        The indices of the subsampled samples.
+    """
+
+    paraboloid1, _ = Paraboloid.sample(N=n_points//2, r=4, z_max=0.1, offset=[0.0, 0.0, 0.75])
+    paraboloid2, _ = Paraboloid.sample(N=n_points//2, r=4, z_max=0.1, offset=[0.0, 0.0, 0.75])
+    double_paraboloid = np.concatenate([paraboloid1, -1 * paraboloid2], axis=0)
+
+    # assign cluster labels
+    cluster = np.zeros(double_paraboloid.shape[0])
+    cluster[double_paraboloid.shape[0]//2:] = 1
+
+    # clip noise and resample if necessary
+    z =  noise*np.random.randn(*double_paraboloid.shape)
+    resample_indices = np.where(np.linalg.norm(z, axis=1) > noise_thresh)[0]
+    while len(resample_indices) > 0:
+        z[resample_indices] = noise*np.random.randn(*z[resample_indices].shape)
+        resample_indices = np.where(np.linalg.norm(z, axis=1) > noise_thresh)[0]
+    double_paraboloid += z
+
+    return_dict = {
+        'data': double_paraboloid,
+        'cluster': cluster,
+        'color': cluster,
+        'data_supersample': None,
+        'subsample_indices': None
+    }
+    return return_dict
+
+
+def mixture_of_gaussians(n_points, noise, supersample=False, supersample_factor=2.5, noise_thresh=0.275):
+    """
+    Generate a mixture of Gaussians dataset.
+    Parameters
+    ----------
+    n_points : int
+        The number of points to generate.
+    noise : float
+        The standard deviation of the Gaussian noise.
+    Returns
+    -------
+    Dictionary providing the following
+    data : array-like, shape (n_points, 2)
+        The generated samples.
+    cluster : array-like, shape (n_points,)
+        The integer labels for class membership of each sample.
+    color : array-like, shape (n_points,)
+        The color of each point.
+    data_supersample : array-like, shape (n_points*supersample_factor, 2)
+        The supersampled samples.
+    subsample_indices : list
+        The indices of the subsampled samples.
+    """
+
+    n_clusters = 3
+    n_points_per_cluster = n_points // n_clusters
+    n_points = n_points_per_cluster * n_clusters # ensures n_points is divisible by n_clusters
+    means = np.array([
+        [-0.5, 0.0],
+        [0.5, 0.0],
+        [0.0, 0.86]
+    ])
+
+    data = np.zeros((n_points, 2))
+    cluster = np.zeros(n_points)
+    for i in range(n_clusters):
+        data[i*n_points_per_cluster:(i+1)*n_points_per_cluster] = means[i]
+        cluster[i*n_points_per_cluster:(i+1)*n_points_per_cluster] = i
+
+    # clip noise and resample if necessary
+    z =  noise*np.random.randn(*data.shape)
+    resample_indices = np.where(np.linalg.norm(z, axis=1) > noise_thresh)[0]
+    while len(resample_indices) > 0:
+        z[resample_indices] = noise*np.random.randn(*z[resample_indices].shape)
+        resample_indices = np.where(np.linalg.norm(z, axis=1) > noise_thresh)[0]
+    data += z
+
+    return_dict = {
+        'data': data,
+        'cluster': cluster,
+        'color': cluster,
+        'data_supersample': None,
+        'subsample_indices': None
+    }
+    return return_dict
 
 def get_mnist_data(n_samples, label=None):
     """
