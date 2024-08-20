@@ -51,8 +51,12 @@ def plot_graph_2D(X, graph, title, node_color='#1f78b4', edge_color='lightgray',
     edge_color : str
         The color of the edges.
     """
+    if type(edge_color) == str:
+        edge_cmap = plt.cm.viridis
+    else:
+        edge_cmap = plt.cm.coolwarm
     plt.figure(dpi=1200)
-    nx.draw(graph, X, node_color=node_color, edge_color=edge_color, node_size=node_size, cmap=plt.cm.Spectral, edge_cmap=plt.cm.coolwarm, edge_vmin=-1, edge_vmax=1, width=edge_width)
+    nx.draw(graph, X, node_color=node_color, edge_color=edge_color, node_size=node_size, cmap=plt.cm.Spectral, edge_cmap=edge_cmap, edge_vmin=-1, edge_vmax=1, width=edge_width)
     plt.title(title)
     plt.gca().set_aspect('equal')
     if colorbar:
@@ -90,7 +94,7 @@ def plot_data_3D(X, color, title, exp_name=None, filename=None):
         fig.write_image(path)
     fig.show()
 
-def plot_graph_3D(X, graph, title, node_color='#1f78b4', edge_color='lightgrey', colorbar=False, exp_name=None, filename=None):
+def plot_graph_3D(X, graph, title, node_color='#1f78b4', node_size=3, edge_width=0.5, edge_color='lightgrey', colorbar=False, camera=None, exp_name=None, filename=None, axes=False):
     """
     Plot the graph with the desired node or edge coloring.
     Parameters
@@ -120,7 +124,7 @@ def plot_graph_3D(X, graph, title, node_color='#1f78b4', edge_color='lightgrey',
         x=edge_x, y=edge_y, z=edge_z,
         mode='lines',
         line=dict(
-            width=0.5 if isinstance(edge_color, str) else 1,
+            width=edge_width,
             color=np.repeat(edge_color, 3),
             colorscale='Spectral_r',
             colorbar=dict(
@@ -133,22 +137,28 @@ def plot_graph_3D(X, graph, title, node_color='#1f78b4', edge_color='lightgrey',
             cmax=1,
         ),
     )
-
     marker_data = go.Scatter3d(
         x=X[:, 0],
         y=X[:, 1],
         z=X[:, 2],
         mode='markers',
         marker=dict(
-            size=3,
+            size=node_size,
             color=node_color,
             colorscale='Viridis',
             opacity=0.8
         ),
     )
-    fig = go.Figure(data=[edge_trace, marker_data])
+    if node_size != 0:
+        fig = go.Figure(data=[edge_trace, marker_data])
+    else:
+        fig = go.Figure(data=[edge_trace])
     fig.update_layout(title=title)
     fig.update_layout(scene=dict(aspectmode='data'))
+    if camera is not None:
+        fig.update_layout(scene_camera=camera)
+    if not axes:
+        fig.update_layout(scene=dict(xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False)))
     if colorbar:
         fig.update_layout(coloraxis=dict(colorscale='Viridis', colorbar=dict(title='Color')))
     if filename is not None and exp_name is not None:
@@ -157,7 +167,8 @@ def plot_graph_3D(X, graph, title, node_color='#1f78b4', edge_color='lightgrey',
         os.makedirs(exp_dir, exist_ok=True)
         path = os.path.join(exp_dir, filename)
         fig.write_image(path)
-    fig.show()    
+    fig.show() 
+    return fig   
 
 def plot_emb(Y, color, title, cmap=plt.cm.Spectral, exp_name=None, filename=None):
     """
