@@ -701,7 +701,6 @@ class TwoDimPruningExperiment:
         return swiss_roll_data, cluster, swiss_roll_supersample, subsample_indices, dataset_info
     
 
-%autoreload 2
 
 def get_pruned_unpruned_graph(data, exp_params):
     if exp_params['mode'] == 'nbrs':
