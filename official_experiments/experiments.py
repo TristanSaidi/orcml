@@ -730,7 +730,7 @@ class ManifoldLearningExperiment:
             self, 
             dataset, 
             experiment_name=None, 
-            seed=42
+            seed=0
         ):
         
         np.random.seed(seed)
@@ -750,7 +750,7 @@ class ManifoldLearningExperiment:
         plt.close()
         
         Y_isomap_orcml = isomap(A_orcml, n_components=2)
-        plot_emb(Y_isomap_orcml, color, title=None)
+        plot_emb(Y_isomap_orcml, color[list(G_orcml)], title=None)
         plt.savefig(f'{save_dir}/isomap_orcml.png')
         plt.close()
 
@@ -761,7 +761,7 @@ class ManifoldLearningExperiment:
         plt.close()
 
         Y_spectral_orcml = spectral_embedding(A_orcml, n_components=2)
-        plot_emb(Y_spectral_orcml, color, title=None)
+        plot_emb(Y_spectral_orcml, color[list(G_orcml)], title=None)
         plt.savefig(f'{save_dir}/spectral_orcml.png')
         plt.close()
 
@@ -771,9 +771,20 @@ class ManifoldLearningExperiment:
         plt.savefig(f'{save_dir}/lle_original.png')
         plt.close()
 
-        Y_lle_orcml = lle(A_orcml, data, n_neighbors= self.exp_params['n_neighbors'], n_components=2)
-        plot_emb(Y_lle_orcml, color, title=None)
+        Y_lle_orcml = lle(A_orcml, data[list(G_orcml)], n_neighbors= self.exp_params['n_neighbors'], n_components=2)
+        plot_emb(Y_lle_orcml, color[list(G_orcml)], title=None)
         plt.savefig(f'{save_dir}/lle_orcml.png')
+        plt.close()
+
+        # umap
+        Y_umap_original = UMAP(A_original, n_components=2)
+        plot_emb(Y_umap_original, color, title=None)
+        plt.savefig(f'{save_dir}/umap_original.png')
+        plt.close()
+
+        Y_umap_orcml = UMAP(A_orcml, n_components=2)
+        plot_emb(Y_umap_orcml, color[list(G_orcml)], title=None)
+        plt.savefig(f'{save_dir}/umap_orcml.png')
         plt.close()
 
         # tsne
@@ -783,16 +794,25 @@ class ManifoldLearningExperiment:
         plt.close()
 
         Y_tsne_orcml = tsne(A_orcml, n_components=2)
-        plot_emb(Y_tsne_orcml, color, title=None)
+        plot_emb(Y_tsne_orcml, color[list(G_orcml)], title=None)
         plt.savefig(f'{save_dir}/tsne_orcml.png')
         plt.close()
+
+        info = {
+            'seed': seed,
+            'dataset_info': dataset_info,
+            'exp_params': self.exp_params
+        }
+        with open(f'{save_dir}/info.json', 'w') as f:
+            json.dump(info, f, indent=4)
 
 
     def get_3D_swiss_roll(self, n_points=4000, noise=6.25, noise_thresh=2.25):
         dataset_info = {
             'name': '3D_swiss_roll',
             'n_points': n_points,
-            'noise': noise
+            'noise': noise,
+            'noise_thresh': noise_thresh
         }
         return_dict = swiss_roll(n_points=n_points, noise=noise, noise_thresh=noise_thresh, supersample=True)
         swiss_roll_data, color, cluster, swiss_roll_supersample, subsample_indices = return_dict['data'], return_dict['color'], return_dict['cluster'], return_dict['data_supersample'], return_dict['subsample_indices']
