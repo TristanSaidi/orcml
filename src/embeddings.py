@@ -11,8 +11,20 @@ from scipy.sparse import issparse
 from scipy.sparse.csgraph import connected_components, shortest_path
 from sklearn.utils.graph import _fix_connected_components
 
-# embeddings
+from numbers import Integral, Real
 
+import numpy as np
+from scipy.linalg import solve
+from scipy.sparse import csr_matrix, eye
+from scipy.sparse.linalg import eigsh
+
+
+from sklearn.neighbors import NearestNeighbors
+from sklearn.utils import check_array
+from sklearn.manifold._locally_linear import null_space
+from sklearn.utils.validation import FLOAT_DTYPES
+
+# embeddings
 def tsne(A, n_components, X=None):
     """
     Compute the t-SNE embedding of a graph.
@@ -154,6 +166,29 @@ def isomap(A, n_components, X=None):
     Y = iso.fit_transform(distances)
     return Y
 
+def lle(A, embedding, n_neighbors, n_components, X=None):
+    """
+    Compute the LLE embedding of a graph.
+    Parameters
+    ----------
+    A : array-like, shape (n_samples, n_samples)
+        The adjacency matrix of the graph.
+    embedding : array-like, shape (n_samples, n_features)
+        The original data.
+    n_components : int
+        The number of components to keep.
+    X : array-like, shape (n_samples, n_features), default=None
+        Embeddings of the original data. To be used only if the graph is not connected.
+    Returns
+    -------
+    Y : array-like, shape (n_samples, n_components)
+        The LLE embedding of the graph.
+    """
+    distances = scipy.sparse.csgraph.shortest_path(A, directed=False)
+    assert np.allclose(distances, distances.T), "The distance matrix is not symmetric."
+    Y, _ = locally_linear_embedding(distances=distances, embedding=embedding, n_neighbors=n_neighbors, n_components=n_components)
+    return Y
+
 
 class Isomap(manifold.Isomap):
 
@@ -208,3 +243,95 @@ class Isomap(manifold.Isomap):
 
         self.embedding_ = self.kernel_pca_.fit_transform(G)
         self._n_features_out = self.embedding_.shape[1]
+
+
+def locally_linear_embedding(
+    distances,
+    embedding,
+    *,
+    n_components,
+    n_neighbors,
+    reg=1e-3,
+    eigen_solver="auto",
+    tol=1e-6,
+    max_iter=100,
+    random_state=None,
+    n_jobs=None,
+):
+    nbrs = NearestNeighbors(metric='precomputed', n_neighbors=n_neighbors, n_jobs=n_jobs)
+    nbrs.fit(distances)
+    X = nbrs._fit_X
+
+    N, d_in = X.shape
+
+    if n_components > d_in:
+        raise ValueError(
+            "output dimension must be less than or equal to input dimension"
+        )
+
+    M_sparse = eigen_solver != "dense"
+
+    W = barycenter_kneighbors_graph(
+        nbrs, embedding=embedding, n_neighbors=n_neighbors, reg=reg, n_jobs=n_jobs
+    )
+
+    # we'll compute M = (I-W)'(I-W)
+    # depending on the solver, we'll do this differently
+    if M_sparse:
+        M = eye(*W.shape, format=W.format) - W
+        M = (M.T * M).tocsr()
+    else:
+        M = (W.T * W - W.T - W).toarray()
+        M.flat[:: M.shape[0] + 1] += 1  # W = W - I = W - I
+
+    return null_space(
+        M,
+        n_components,
+        k_skip=1,
+        eigen_solver=eigen_solver,
+        tol=tol,
+        max_iter=max_iter,
+        random_state=random_state,
+    )
+
+
+
+def barycenter_kneighbors_graph(distances, embedding, n_neighbors, reg=1e-3, n_jobs=None):
+    knn = NearestNeighbors(metric='precomputed', n_neighbors=n_neighbors+1, n_jobs=n_jobs).fit(distances)
+    # knn = NearestNeighbors(n_neighbors=n_neighbors + 1, n_jobs=n_jobs).fit(X)
+    X = knn._fit_X
+    n_samples = knn.n_samples_fit_
+    ind = knn.kneighbors(X, return_distance=False)
+    ind = ind[:, 1:]
+    data = barycenter_weights(embedding, embedding, ind, reg=reg)
+    indptr = np.arange(0, n_samples * n_neighbors + 1, n_neighbors)
+    return csr_matrix((data.ravel(), ind.ravel(), indptr), shape=(n_samples, n_samples))
+
+
+
+def barycenter_weights(X, Y, indices, reg=1e-3):
+    X = check_array(X, dtype=FLOAT_DTYPES)
+    Y = check_array(Y, dtype=FLOAT_DTYPES)
+    indices = check_array(indices, dtype=int)
+
+    n_samples, n_neighbors = indices.shape
+    assert X.shape[0] == n_samples
+
+    B = np.empty((n_samples, n_neighbors), dtype=X.dtype)
+    v = np.ones(n_neighbors, dtype=X.dtype)
+
+    # this might raise a LinalgError if G is singular and has trace
+    # zero
+    for i, ind in enumerate(indices):
+        A = Y[ind]
+        C = A - X[i]  # broadcasting
+        G = np.dot(C, C.T)
+        trace = np.trace(G)
+        if trace > 0:
+            R = reg * trace
+        else:
+            R = reg
+        G.flat[:: n_neighbors + 1] += R
+        w = solve(G, v, assume_a="pos")
+        B[i, :] = w / np.sum(w)
+    return B
