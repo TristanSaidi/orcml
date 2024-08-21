@@ -160,6 +160,7 @@ def swiss_roll(n_points, noise, dim=3, supersample=False, supersample_factor=1.5
     return_dict = {
         'data': swiss_roll,
         'cluster': None,
+        'color': color,
         'data_supersample': swiss_roll_supersample,
         'subsample_indices': subsample_indices
     }
