@@ -699,3 +699,102 @@ class TwoDimPruningExperiment:
         return_dict = swiss_roll(n_points=n_points, noise=noise, noise_thresh=noise_thresh, supersample=True)
         swiss_roll_data, cluster, swiss_roll_supersample, subsample_indices = return_dict['data'], return_dict['cluster'], return_dict['data_supersample'], return_dict['subsample_indices']
         return swiss_roll_data, cluster, swiss_roll_supersample, subsample_indices, dataset_info
+    
+
+%autoreload 2
+
+def get_pruned_unpruned_graph(data, exp_params):
+    if exp_params['mode'] == 'nbrs':
+        G, A = make_prox_graph(data, mode=exp_params['mode'], n_neighbors=exp_params['n_neighbors']) # unpruned k-nn graph
+    else:
+        G, A = make_prox_graph(data, mode=exp_params['mode'], epsilon=exp_params['epsilon'])
+    return_dict = graph_orc(G, weight='unweighted_dist')
+    pruned_orcml = prune_orcml(return_dict['G'], data, eps=exp_params['epsilon'], lda=exp_params['lda'], delta=exp_params['delta'])
+    G_orcml = pruned_orcml['G_pruned']
+    A_orcml = nx.adjacency_matrix(G_orcml).toarray()
+    return {
+        "G_original": G,
+        "A_original": A,
+        "G_orcml": G_orcml,
+        "A_orcml": A_orcml
+    }
+
+class ManifoldLearningExperiment:
+    
+    def __init__(self, exp_params):
+        self.exp_params = exp_params
+        self.map = {
+            '3D_swiss_roll': self.get_3D_swiss_roll
+        }
+
+    def run_experiment(
+            self, 
+            dataset, 
+            experiment_name=None, 
+            seed=42
+        ):
+        
+        np.random.seed(seed)
+        data, color, cluster, data_supersample, subsample_indices, dataset_info = self.map[dataset]()
+
+        if experiment_name is not None:
+            save_dir = f'./outputs/official_experiments/{experiment_name}/manifold_learning/{dataset}'
+            os.makedirs(save_dir, exist_ok=True)
+
+        return_dict = get_pruned_unpruned_graph(data, self.exp_params)
+        G_original, A_original, G_orcml, A_orcml = return_dict['G_original'], return_dict['A_original'], return_dict['G_orcml'], return_dict['A_orcml']
+    
+        # isomap
+        Y_isomap_original = isomap(A_original, n_components=2)
+        plot_emb(Y_isomap_original, color, title=None)
+        plt.savefig(f'{save_dir}/isomap_original.png')
+        plt.close()
+        
+        Y_isomap_orcml = isomap(A_orcml, n_components=2)
+        plot_emb(Y_isomap_orcml, color, title=None)
+        plt.savefig(f'{save_dir}/isomap_orcml.png')
+        plt.close()
+
+        # spectral
+        Y_spectral_original = spectral_embedding(A_original, n_components=2)
+        plot_emb(Y_spectral_original, color, title=None)
+        plt.savefig(f'{save_dir}/spectral_original.png')
+        plt.close()
+
+        Y_spectral_orcml = spectral_embedding(A_orcml, n_components=2)
+        plot_emb(Y_spectral_orcml, color, title=None)
+        plt.savefig(f'{save_dir}/spectral_orcml.png')
+        plt.close()
+
+        # lle
+        Y_lle_original = lle(A_original, data, n_neighbors= self.exp_params['n_neighbors'], n_components=2)
+        plot_emb(Y_lle_original, color, title=None)
+        plt.savefig(f'{save_dir}/lle_original.png')
+        plt.close()
+
+        Y_lle_orcml = lle(A_orcml, data, n_neighbors= self.exp_params['n_neighbors'], n_components=2)
+        plot_emb(Y_lle_orcml, color, title=None)
+        plt.savefig(f'{save_dir}/lle_orcml.png')
+        plt.close()
+
+        # tsne
+        Y_tsne_original = tsne(A_original, n_components=2)
+        plot_emb(Y_tsne_original, color, title=None)
+        plt.savefig(f'{save_dir}/tsne_original.png')
+        plt.close()
+
+        Y_tsne_orcml = tsne(A_orcml, n_components=2)
+        plot_emb(Y_tsne_orcml, color, title=None)
+        plt.savefig(f'{save_dir}/tsne_orcml.png')
+        plt.close()
+
+
+    def get_3D_swiss_roll(self, n_points=4000, noise=6.25, noise_thresh=2.25):
+        dataset_info = {
+            'name': '3D_swiss_roll',
+            'n_points': n_points,
+            'noise': noise
+        }
+        return_dict = swiss_roll(n_points=n_points, noise=noise, noise_thresh=noise_thresh, supersample=True)
+        swiss_roll_data, color, cluster, swiss_roll_supersample, subsample_indices = return_dict['data'], return_dict['color'], return_dict['cluster'], return_dict['data_supersample'], return_dict['subsample_indices']
+        return swiss_roll_data, color, cluster, swiss_roll_supersample, subsample_indices, dataset_info
