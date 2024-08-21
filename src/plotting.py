@@ -70,7 +70,7 @@ def plot_graph_2D(X, graph, title, node_color='#1f78b4', edge_color='lightgray',
         path = os.path.join(exp_dir, filename)
         plt.savefig(path)
 
-def plot_data_3D(X, color, title, exp_name=None, filename=None):
+def plot_data_3D(X, color, title, exp_name=None, filename=None, axes=False):
     marker_data = go.Scatter3d(
         x=X[:, 0],
         y=X[:, 1],
@@ -86,6 +86,8 @@ def plot_data_3D(X, color, title, exp_name=None, filename=None):
     fig = go.Figure(data=[marker_data])
     fig.update_layout(title=title)
     fig.update_layout(scene=dict(aspectmode='data'))
+    if not axes:
+        fig.update_layout(scene=dict(xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False)))
     if filename is not None and exp_name is not None:
         os.makedirs('figures', exist_ok=True)
         exp_dir = os.path.join('figures', exp_name)
