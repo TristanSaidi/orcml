@@ -52,7 +52,7 @@ _apsp = {}
 # -------------------------------------------------------
 
 @lru_cache(_cache_maxsize)
-def _get_single_node_neighbors_distributions(node, direction="successors"):
+def _get_single_node_neighbors_distributions(src, target, direction="successors"):
     """Get the neighbor density distribution of given node `node`.
 
     Parameters
@@ -72,15 +72,19 @@ def _get_single_node_neighbors_distributions(node, direction="successors"):
     """
     if _Gk.isDirected():
         if direction == "predecessors":
-            neighbors = list(_Gk.iterInNeighbors(node))
+            neighbors = list(_Gk.iterInNeighbors(src))
         else:  # successors
-            neighbors = list(_Gk.iterNeighbors(node))
+            neighbors = list(_Gk.iterNeighbors(src))
     else:
-        neighbors = list(_Gk.iterNeighbors(node))
+        neighbors = list(_Gk.iterNeighbors(src))
     
-    if node not in neighbors:
-        neighbors.append(node)
-    assert node in neighbors, "Node need to be in neighbors."
+    if src in neighbors:
+        neighbors.remove(src)
+    assert src not in neighbors, "Node need to be excluded from neighbors."
+
+    if target in neighbors:
+        neighbors.remove(target)
+    assert target not in neighbors, "Target need to be excluded from neighbors."
 
     # # Get sum of distributions from x's all neighbors
     # heap_weight_node_pair = []
@@ -139,9 +143,9 @@ def _distribute_densities(source, target):
     t0 = time.time()
 
     if _Gk.isDirected():
-        x, source_topknbr = _get_single_node_neighbors_distributions(source, "predecessors")
+        x, source_topknbr = _get_single_node_neighbors_distributions(source, target, "predecessors")
     else:
-        x, source_topknbr = _get_single_node_neighbors_distributions(source, "successors")
+        x, source_topknbr = _get_single_node_neighbors_distributions(source, target, "successors")
 
     # Distribute densities for target and target's neighbors as y
     y, target_topknbr = _get_single_node_neighbors_distributions(target, "successors")
