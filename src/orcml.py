@@ -361,7 +361,6 @@ def prune_orcml(G, X, eps, lda, delta=1.0, weight='unweighted_dist', verbose=Fal
             print(f"Threshold: {threshold}")
             print()
         if d_G_prime > threshold:
-            # G_pruned.remove_edge(i, j)
             num_removed_edges += 1
             preserved_edges.remove(candidate_edge_indices[num])
         else:
