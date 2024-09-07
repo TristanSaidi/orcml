@@ -699,8 +699,6 @@ class TwoDimPruningExperiment:
         return_dict = swiss_roll(n_points=n_points, noise=noise, noise_thresh=noise_thresh, supersample=True)
         swiss_roll_data, cluster, swiss_roll_supersample, subsample_indices = return_dict['data'], return_dict['cluster'], return_dict['data_supersample'], return_dict['subsample_indices']
         return swiss_roll_data, cluster, swiss_roll_supersample, subsample_indices, dataset_info
-    
-
 
 def get_pruned_unpruned_graph(data, exp_params):
     if exp_params['mode'] == 'nbrs':
@@ -711,6 +709,8 @@ def get_pruned_unpruned_graph(data, exp_params):
     pruned_orcml = prune_orcml(return_dict['G'], data, eps=exp_params['epsilon'], lda=exp_params['lda'], delta=exp_params['delta'])
     G_orcml = pruned_orcml['G_pruned']
     A_orcml = nx.adjacency_matrix(G_orcml).toarray()
+    # symmetrize
+    A = np.maximum(A, A.T)
     return {
         "G_original": G,
         "A_original": A,
@@ -723,7 +723,8 @@ class ManifoldLearningExperiment:
     def __init__(self, exp_params):
         self.exp_params = exp_params
         self.map = {
-            '3D_swiss_roll': self.get_3D_swiss_roll
+            '3D_swiss_roll': self.get_3D_swiss_roll,
+            '3D_swiss_hole': self.get_3D_swiss_hole,
         }
 
     def run_experiment(
@@ -777,12 +778,12 @@ class ManifoldLearningExperiment:
         plt.close()
 
         # umap
-        Y_umap_original = UMAP(A_original, n_components=2)
+        Y_umap_original = UMAP(A_original, n_neighbors=self.exp_params['n_neighbors'], n_components=2)
         plot_emb(Y_umap_original, color, title=None)
         plt.savefig(f'{save_dir}/umap_original.png')
         plt.close()
 
-        Y_umap_orcml = UMAP(A_orcml, n_components=2)
+        Y_umap_orcml = UMAP(A_orcml, n_neighbors=self.exp_params['n_neighbors'], n_components=2)
         plot_emb(Y_umap_orcml, color[list(G_orcml)], title=None)
         plt.savefig(f'{save_dir}/umap_orcml.png')
         plt.close()
@@ -807,7 +808,7 @@ class ManifoldLearningExperiment:
             json.dump(info, f, indent=4)
 
 
-    def get_3D_swiss_roll(self, n_points=4000, noise=6.25, noise_thresh=2.25):
+    def get_3D_swiss_roll(self, n_points=2000, noise=1.2, noise_thresh=1.1):
         dataset_info = {
             'name': '3D_swiss_roll',
             'n_points': n_points,
@@ -815,5 +816,17 @@ class ManifoldLearningExperiment:
             'noise_thresh': noise_thresh
         }
         return_dict = swiss_roll(n_points=n_points, noise=noise, noise_thresh=noise_thresh, supersample=True)
+        swiss_roll_data, color, cluster, swiss_roll_supersample, subsample_indices = return_dict['data'], return_dict['color'], return_dict['cluster'], return_dict['data_supersample'], return_dict['subsample_indices']
+        return swiss_roll_data, color, cluster, swiss_roll_supersample, subsample_indices, dataset_info
+    
+
+    def get_3D_swiss_hole(self, n_points=2000, noise=1.2, noise_thresh=1.1):
+        dataset_info = {
+            'name': '3D_swiss_hole',
+            'n_points': n_points,
+            'noise': noise,
+            'noise_thresh': noise_thresh
+        }
+        return_dict = swiss_roll(n_points=n_points, noise=noise, noise_thresh=noise_thresh, supersample=True, hole=True)
         swiss_roll_data, color, cluster, swiss_roll_supersample, subsample_indices = return_dict['data'], return_dict['color'], return_dict['cluster'], return_dict['data_supersample'], return_dict['subsample_indices']
         return swiss_roll_data, color, cluster, swiss_roll_supersample, subsample_indices, dataset_info
