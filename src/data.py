@@ -113,7 +113,7 @@ def moons(n_points, noise, supersample=False, supersample_factor=2.5, noise_thre
     }
     return return_dict
 
-def swiss_roll(n_points, noise, dim=3, supersample=False, supersample_factor=1.5, noise_thresh=0.275):
+def swiss_roll(n_points, noise, dim=3, supersample=False, supersample_factor=1.5, noise_thresh=0.275, hole=False):
     """
     Generate a Swiss roll dataset.
     Parameters
@@ -138,7 +138,7 @@ def swiss_roll(n_points, noise, dim=3, supersample=False, supersample_factor=1.5
     else:
         N_total = n_points
         subsample_indices = None
-    swiss_roll, color = datasets.make_swiss_roll(N_total)
+    swiss_roll, color = datasets.make_swiss_roll(N_total, hole=hole)
     if dim == 2:
         swiss_roll = swiss_roll[:, [0, 2]]
     if supersample:
