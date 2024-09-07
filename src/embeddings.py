@@ -26,7 +26,7 @@ from sklearn.utils.validation import FLOAT_DTYPES
 import umap
 
 # embeddings
-def UMAP(A, n_components, X=None):
+def UMAP(A, n_neighbors, n_components, X=None):
     """
     Compute the UMAP embedding of a graph.
     Parameters
@@ -73,7 +73,7 @@ def UMAP(A, n_components, X=None):
     distances = scipy.sparse.csgraph.shortest_path(A, directed=False)
     assert np.allclose(distances, distances.T), "The distance matrix is not symmetric."
 
-    umap_obj = umap.UMAP(n_components=n_components, metric='precomputed')
+    umap_obj = umap.UMAP(n_neighbors=n_neighbors, n_components=n_components, metric='precomputed')
     Y = umap_obj.fit_transform(distances)
     return Y
 
@@ -181,13 +181,6 @@ def isomap_connected_component(A, n_components, X=None):
         assert len(idx_i) == Yi.shape[0], "The number of points in the connected component does not match the number of rows in the embedding."
 
     num_clusters = len(Y)
-    # print('Number of clusters:', num_clusters)
-    # if num_clusters > 1:
-    #     for cluster in range(num_clusters):
-    #         theta = 2 * np.pi * cluster / num_clusters
-    #         centroid = 3 * np.array([np.cos(theta), np.sin(theta)])
-    #         Y[cluster] += centroid
-
     Y = np.concatenate(Y)
     return Y, preserved_indices
     
@@ -241,7 +234,6 @@ def lle(A, embedding, n_neighbors, n_components, X=None):
     assert np.allclose(distances, distances.T), "The distance matrix is not symmetric."
     Y, _ = locally_linear_embedding(distances=distances, embedding=embedding, n_neighbors=n_neighbors, n_components=n_components)
     return Y
-
 
 class Isomap(manifold.Isomap):
 
@@ -297,7 +289,6 @@ class Isomap(manifold.Isomap):
         self.embedding_ = self.kernel_pca_.fit_transform(G)
         self._n_features_out = self.embedding_.shape[1]
 
-
 def locally_linear_embedding(
     distances,
     embedding,
@@ -306,8 +297,8 @@ def locally_linear_embedding(
     n_neighbors,
     reg=1e-3,
     eigen_solver="auto",
-    tol=1e-6,
-    max_iter=100,
+    tol=1e-5,
+    max_iter=200,
     random_state=None,
     n_jobs=None,
 ):
