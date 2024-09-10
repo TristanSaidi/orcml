@@ -715,7 +715,8 @@ def get_pruned_unpruned_graph(data, exp_params):
         "G_original": G,
         "A_original": A,
         "G_orcml": G_orcml,
-        "A_orcml": A_orcml
+        "A_orcml": A_orcml,
+        "preserved_edges": pruned_orcml['preserved_edges']
     }
 
 class ManifoldLearningExperiment:

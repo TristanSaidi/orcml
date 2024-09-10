@@ -207,7 +207,7 @@ def isomap(A, n_components, X=None):
     iso = Isomap(metric='precomputed', n_components=n_components)
     # compute geodesic distances
     distances = scipy.sparse.csgraph.shortest_path(A, directed=False)
-    assert np.allclose(distances, distances.T), "The from scipy.sparse.csgraph import connected_componentsdistance matrix is not symmetric."
+    assert np.allclose(distances, distances.T), "The distance matrix is not symmetric."
     
     Y = iso.fit_transform(distances)
     return Y

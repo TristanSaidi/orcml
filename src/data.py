@@ -62,6 +62,53 @@ def concentric_circles(n_points, factor, noise, supersample=False, supersample_f
     }
     return return_dict
 
+
+def quadratics(n_points, noise, supersample=False, supersample_factor=2.5, noise_thresh=0.275):
+    """
+    Generate a dataset of quadratics.
+    Parameters
+    ----------
+    n_points : int
+        The number of points to generate.
+    noise : float
+        The standard deviation of the Gaussian noise.
+    Returns
+    -------
+    Dictionary providing the following
+    data : array-like, shape (n_points, 2)
+        The generated samples.
+    cluster : array-like, shape (n_points,)
+        The integer labels for class membership of each sample.
+    data_supersample : array-like, shape (n_points*supersample_factor, 2)
+        The supersampled samples.
+    subsample_indices : list
+        The indices of the subsampled samples.
+    """
+    
+    X = np.random.uniform(-2, 2, (n_points, 1))
+    Y = np.zeros((n_points, 1))
+    # bernoulli with p = 0.5 for each point
+    labels = np.random.binomial(1, 0.5, n_points)
+    Y[labels == 0] = 0.2*X[labels == 0]**2
+    Y[labels == 1] = 0.3*X[labels == 1]**2 + 1
+    data = np.concatenate([X, Y], axis=1)
+
+    # clip noise and resample if necessary
+    z = noise*np.random.randn(n_points, 2)
+    resample_indices = np.where(np.linalg.norm(z, axis=1) > noise_thresh)[0]
+    while len(resample_indices) > 0:
+        z[resample_indices] = noise*np.random.randn(*z[resample_indices].shape)
+        resample_indices = np.where(np.linalg.norm(z, axis=1) > noise_thresh)[0]
+    data += z
+    return_dict = {
+        'data': data,
+        'cluster': labels,
+        'data_supersample': None,
+        'subsample_indices': None
+    }    
+    return return_dict
+
+
 def moons(n_points, noise, supersample=False, supersample_factor=2.5, noise_thresh=0.275):
     """
     Generate a moons dataset.
@@ -221,7 +268,7 @@ def s_curve(n_points, noise, supersample=False, supersample_factor=2.5, noise_th
     return return_dict
 
 
-def cassini(n_points, noise, supersample=False, supersample_factor=2.5, noise_thresh=0.275):
+def cassini(n_points, noise, supersample=False, supersample_factor=2.5, noise_thresh=0.275, dim=2, third_dim_radial=False):
     """
     Generate a cassini oval dataset.
     Parameters
@@ -254,6 +301,22 @@ def cassini(n_points, noise, supersample=False, supersample_factor=2.5, noise_th
         cassini = cassini[subsample_indices]
     else:
         cassini_supersample = None
+    if dim == 3:
+        if third_dim_radial:
+            # choose random rotation in [0, 2pi] about x axis for each point. Should be 3 x 3 x N
+            thetas = np.random.uniform(0, 2*np.pi, cassini.shape[0])
+            R = np.array([[np.ones(thetas.shape), np.zeros(thetas.shape), np.zeros(thetas.shape)],
+                        [np.zeros(thetas.shape), np.cos(thetas), -np.sin(thetas)],
+                        [np.zeros(thetas.shape), np.sin(thetas), np.cos(thetas)]])
+            # transpose to N x 3 x 3
+            R = np.transpose(R, (2, 0, 1))
+            # add dimension for matrix multiplication
+            cassini = np.concatenate([cassini, np.zeros((cassini.shape[0], 1))], axis=1)
+            for i in range(cassini.shape[0]):
+                cassini[i] = np.dot(R[i], cassini[i])
+        else:
+            # uniform in [-1, 1] for third dimension
+            cassini = np.concatenate([cassini, 2*np.random.rand(cassini.shape[0], 1) - 1], axis=1)
 
     # clip noise and resample if necessary
     z =  noise*np.random.randn(*cassini.shape)
@@ -511,6 +574,62 @@ def mixture_of_gaussians(n_points, noise, supersample=False, supersample_factor=
         'subsample_indices': None
     }
     return return_dict
+
+def spheres(n_points, noise, supersample=False, supersample_factor=2.5, noise_thresh=0.275):
+
+    """
+    Generate a dataset of spheres.
+    Parameters
+    ----------
+    n_points : int
+        The number of points to generate.
+    noise : float
+        The standard deviation of the Gaussian noise.
+    Returns
+    -------
+    Dictionary providing the following
+    data : array-like, shape (n_points, 3)
+        The generated samples.
+    cluster : array-like, shape (n_points,)
+        The integer labels for class membership of each sample.
+    color : array-like, shape (n_points,)
+        The color of each point.
+    data_supersample : array-like, shape (n_points*supersample_factor, 3)
+        The supersampled samples.
+    subsample_indices : list
+        The indices of the subsampled samples.
+    """
+    if supersample:
+        N_total = int(n_points * supersample_factor)
+        subsample_indices = np.random.choice(N_total, n_points, replace=False)
+    else:
+        N_total = n_points
+        subsample_indices = None
+    # bernoulli with p = 0.5 for each point
+    cluster = np.random.binomial(1, 0.5, N_total)
+    sphere_1 = Sphere.sample(N=sum(cluster), n=2, R=1.0)
+    sphere_2 = Sphere.sample(N=N_total-sum(cluster), n=2, R=1.0)
+    sphere_2 += np.array([0, 2.3, 0]) # offset
+   
+    spheres = np.concatenate([sphere_1, sphere_2], axis=0)
+
+    # clip noise and resample if necessary
+    z =  noise*np.random.randn(*spheres.shape)
+    resample_indices = np.where(np.linalg.norm(z, axis=1) > noise_thresh)[0]
+    while len(resample_indices) > 0:
+        z[resample_indices] = noise*np.random.randn(*z[resample_indices].shape)
+        resample_indices = np.where(np.linalg.norm(z, axis=1) > noise_thresh)[0]
+    spheres += z
+
+    return_dict = {
+        'data': spheres,
+        'cluster': cluster,
+        'color': cluster,
+        'data_supersample': None,
+        'subsample_indices': subsample_indices
+    }
+    return return_dict
+
 
 def get_mnist_data(n_samples, label=None):
     """
