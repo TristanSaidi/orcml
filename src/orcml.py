@@ -74,6 +74,11 @@ def make_prox_graph(X, mode='nbrs', n_neighbors=None, epsilon=None):
             dists[node_idx] = np.inf # exclude self
             nearest_neighbor = np.argmin(dists)
             G.add_edge(node_idx, nearest_neighbor, weight=dists[nearest_neighbor])
+            if mode == 'eps':
+                G[node_idx][nearest_neighbor]['unweighted_dist'] = epsilon
+            else:
+                G[node_idx][nearest_neighbor]['unweighted_dist'] = np.min(dists)
+
     return G, A
 
 
@@ -286,7 +291,7 @@ def prune_orc(G, delta, X, verbose=False):
         'preserved_scaled_orcs': preserved_scaled_orcs,
     }
 
-def prune_orcml(G, X, eps, lda, delta=1.0, weight='unweighted_dist', verbose=False):
+def prune_orcml(G, X, eps, lda, delta=0.8, weight='unweighted_dist', verbose=False):
     """
     Prune the graph with the orcml method.
     Parameters
@@ -329,8 +334,8 @@ def prune_orcml(G, X, eps, lda, delta=1.0, weight='unweighted_dist', verbose=Fal
     num_removed_edges = 0
 
     G_pruned = G_prime.copy()
-    preserved_nodes = set()
-    preserved_edges = list(range(len(G.edges())))
+    preserved_nodes = set(G_prime.nodes()) # start from G' and add nodes as we go
+    preserved_edges = list(range(len(G.edges()))) # start from all edges and remove as we go
 
     for num, (i, j) in enumerate(C):
         # check distance d_G'(x,y) for all x,y in C
@@ -378,6 +383,7 @@ def prune_orcml(G, X, eps, lda, delta=1.0, weight='unweighted_dist', verbose=Fal
 
     if len(preserved_nodes) != len(G.nodes()):
         print("Warning: There are isolated nodes in the graph. This will be artificially fixed.")
+        print(f"Number of isolated nodes: {len(G.nodes()) - len(preserved_nodes)}")
         missing_nodes = set(G.nodes()).difference(preserved_nodes)
         for node_idx in missing_nodes:
             # find nearest neighbor
