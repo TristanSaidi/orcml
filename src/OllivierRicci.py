@@ -22,7 +22,6 @@ import heapq
 import math
 import multiprocessing as mp
 import time
-from functools import lru_cache
 from importlib import util
 
 import networkit as nk
@@ -51,7 +50,6 @@ _apsp = {}
 
 # -------------------------------------------------------
 
-@lru_cache(_cache_maxsize)
 def _get_single_node_neighbors_distributions(src, target, direction="successors"):
     """Get the neighbor density distribution of given node `node`.
 
@@ -80,11 +78,11 @@ def _get_single_node_neighbors_distributions(src, target, direction="successors"
     
     if src in neighbors:
         neighbors.remove(src)
-    assert src not in neighbors, "Node need to be excluded from neighbors."
+    assert src not in neighbors, "Node needs to be excluded from neighbors."
 
     if target in neighbors:
         neighbors.remove(target)
-    assert target not in neighbors, "Target need to be excluded from neighbors."
+    assert target not in neighbors, "Target needs to be excluded from neighbors."
 
     # # Get sum of distributions from x's all neighbors
     # heap_weight_node_pair = []
@@ -174,7 +172,6 @@ def _distribute_densities(source, target):
     return x, y, d
 
 
-@lru_cache(_cache_maxsize)
 def _source_target_shortest_path(source, target):
     """Compute pairwise shortest path from `source` to `target` by BidirectionalDijkstra via Networkit.
 

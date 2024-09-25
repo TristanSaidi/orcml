@@ -5,12 +5,13 @@ import os
 import plotly.graph_objs as go
 import seaborn as sns
 import gudhi
+import persim
 
 from src.eval_utils import *
 
 # plotting functions
 
-def plot_data_2D(X, y, title, node_size=10, axes=False, exp_name=None, filename=None):
+def plot_data_2D(X, color, title, node_size=10, axes=False, exp_name=None, filename=None, cmap=plt.cm.Spectral):
     """
     Plot the data with the points colored by class membership.
     Parameters
@@ -23,7 +24,7 @@ def plot_data_2D(X, y, title, node_size=10, axes=False, exp_name=None, filename=
         The title of the plot.
     """
     plt.figure(figsize=(6, 6))
-    plt.scatter(X[:, 0], X[:, 1], c=y, cmap=plt.cm.Spectral, s=node_size)
+    plt.scatter(X[:, 0], X[:, 1], c=color, cmap=cmap, s=node_size)
     plt.title(title)
     plt.gca().set_aspect('equal')
     if not axes:
@@ -70,24 +71,72 @@ def plot_graph_2D(X, graph, title, node_color='#1f78b4', edge_color='lightgray',
         path = os.path.join(exp_dir, filename)
         plt.savefig(path)
 
-def plot_data_3D(X, color, title, exp_name=None, filename=None, axes=False):
-    marker_data = go.Scatter3d(
-        x=X[:, 0],
-        y=X[:, 1],
-        z=X[:, 2],
-        mode='markers',
-        marker=dict(
-            size=3,
-            color=color,
-            colorscale='Viridis',
-            opacity=0.8
-        ),
+def plot_data_3D(X, color, title, exp_name=None, filename=None, axes=False, node_size=3, opacity=1, cmap=None, labels=None, camera=None):
+    # If labels are provided, we'll plot one trace per label/color group
+    fig = go.Figure()
+    if labels is not None:
+        unique_colors = np.unique(color)  # Find unique color values
+        for c in unique_colors:
+            # Get the corresponding label for the color if available
+            label_name = labels[c] if c in labels else f"Group {c}"
+            # Filter points that match the current color group
+            mask = (color == c)
+            # convert to indices
+            mask = np.where(mask)[0]
+            fig.add_trace(go.Scatter3d(
+                x=X[mask, 0],
+                y=X[mask, 1],
+                z=X[mask, 2],
+                mode='markers',
+                marker=dict(
+                    size=node_size,
+                    color=color[mask],  # Use the same color value for each group
+                    colorscale=cmap,     # Use colormap for unique categories
+                    opacity=opacity
+                ),
+                name=label_name,  # Use the label for the legend
+                showlegend=True,
+                legendgroup=label_name  # Group the legend by label
+            ))
+    else:
+        # If no labels, plot with continuous color mapping across the entire dataset
+        fig.add_trace(go.Scatter3d(
+            x=X[:, 0],
+            y=X[:, 1],
+            z=X[:, 2],
+            mode='markers',
+            marker=dict(
+                size=node_size,
+                color=color,  # Color mapped to a continuous array
+                colorscale=cmap,  # Apply the colormap
+                opacity=opacity,
+                colorbar=dict(title="Color Scale"),  # Show colorbar for continuous colormap
+            ),
+            showlegend=False
+        ))
+
+    # Update layout for the legend to increase marker size in the legend
+    fig.update_layout(
+        title=title,
+        legend=dict(
+            x=0.85,  # Move the legend a little to the left
+            y=1,  # Keep the legend at the top
+            itemsizing='constant',  # Makes legend items consistent
+            font=dict(size=12),
+            itemclick='toggleothers',  # Click legend to toggle
+            itemdoubleclick='toggle'  # Double click for fine toggle
+        )
     )
-    fig = go.Figure(data=[marker_data])
+    
+    # Custom marker size in the legend
+    fig.update_traces(marker=dict(size=node_size * 2), selector=dict(mode='markers'))
+
     fig.update_layout(title=title)
     fig.update_layout(scene=dict(aspectmode='data'))
     if not axes:
         fig.update_layout(scene=dict(xaxis=dict(visible=False), yaxis=dict(visible=False), zaxis=dict(visible=False)))
+    if camera is not None:
+        fig.update_layout(scene_camera=camera)
     if filename is not None and exp_name is not None:
         os.makedirs('figures', exist_ok=True)
         exp_dir = os.path.join('figures', exp_name)
@@ -95,6 +144,7 @@ def plot_data_3D(X, color, title, exp_name=None, filename=None, axes=False):
         path = os.path.join(exp_dir, filename)
         fig.write_image(path)
     fig.show()
+    return fig
 
 def plot_graph_3D(X, graph, title, node_color='#1f78b4', node_size=3, edge_width=0.5, edge_color='lightgrey', colorbar=False, camera=None, exp_name=None, filename=None, axes=False, cmap='Viridis', opacity=None, cmin=-1, cmax=1, node_colorbar=False, node_colorbar_title=None):
     """
@@ -317,7 +367,7 @@ def plot_scatter(x, y, title, xlabel, ylabel, legend=None, color=None, exp_name=
         plt.savefig(path)
 
 
-def plot_barcode(dgms, title=None, exp_name=None, filename=None):
+def plot_barcode(dgms, exp_name=None, filename=None, thresh=None):
     """
     Plot a persistence barcode.
     Parameters
@@ -325,8 +375,36 @@ def plot_barcode(dgms, title=None, exp_name=None, filename=None):
     dgms : list
         List of persistence diagrams, where each element is a list [homology, persistence].
     """
-    ax = gudhi.plot_persistence_barcode(dgms, max_intervals=100, alpha=0.9)
-    ax.set_title('Persistence barcode') if title is None else ax.set_title(title)
+    plt.figure()
+    ax = gudhi.plot_persistence_barcode(dgms, max_intervals=25, alpha=0.9, legend=False)
+    if thresh is not None:
+        ax.set_xlim([0, thresh])
+    if filename is not None and exp_name is not None:
+        os.makedirs('figures', exist_ok=True)
+        exp_dir = os.path.join('figures', exp_name)
+        os.makedirs(exp_dir, exist_ok=True)
+        path = os.path.join(exp_dir, filename)
+        plt.savefig(path)
+
+def plot_persistence_diagram(dgms, thresh=None, exp_name=None, filename=None):
+    """
+    Plot a persistence diagram.
+    Parameters
+    ----------
+    dgms : list
+        List of persistence diagrams, where each element is a list [homology, persistence].
+    """
+    # convert to persim format
+    plt.figure()
+    num_dims = len(np.unique([dgm[0] for dgm in dgms]))
+    dgms_converted = []
+    for dim in range(num_dims):
+        dgms_converted.append(np.array([dgm[1] for dgm in dgms if dgm[0] == dim]))
+    if thresh is not None:
+        xy_range = [-0.1, thresh, -0.1, thresh]
+    else:
+        xy_range = None
+    persim.plot_diagrams(dgms_converted, xy_range=xy_range)
     if filename is not None and exp_name is not None:
         os.makedirs('figures', exist_ok=True)
         exp_dir = os.path.join('figures', exp_name)

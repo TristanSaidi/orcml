@@ -52,7 +52,7 @@ def UMAP(A, n_neighbors, n_components, X=None):
             (
                 "The number of connected components of the neighbors graph "
                 f"is {n_connected_components} > 1. Completing the graph to fit"
-                " Isomap might be slow. Increase the number of neighbors to "
+                " UMAP might be slow. Increase the number of neighbors to "
                 "avoid this issue."
             ),
             stacklevel=2,
@@ -104,7 +104,7 @@ def tsne(A, n_components, X=None):
             (
                 "The number of connected components of the neighbors graph "
                 f"is {n_connected_components} > 1. Completing the graph to fit"
-                " Isomap might be slow. Increase the number of neighbors to "
+                " tSNE might be slow. Increase the number of neighbors to "
                 "avoid this issue."
             ),
             stacklevel=2,
@@ -147,43 +147,6 @@ def spectral_embedding(A, n_components):
     Y = se.fit_transform(A)
     return Y
 
-def isomap_connected_component(A, n_components, X=None):
-    """
-    Compute the Isomap embedding of a graph with (potentially) > 1 connected component.
-    Parameters
-    ----------
-    A : array-like, shape (n_samples, n_samples)
-        The adjacency matrix of the graph.
-    n_components : int
-        The number of components to keep.
-    X : array-like, shape (n_samples, n_features), default=None
-        Unused.
-    Returns
-    -------
-    Y : array-like, shape (n_samples, n_components)
-        The Isomap embedding of the graph.
-    """
-    n_connected_components, component_labels = scipy.sparse.csgraph.connected_components(A)
-    Y = []
-    preserved_indices = []
-    # separately embed each connected component        
-    for i in range(n_connected_components):
-        idx_i = np.flatnonzero(component_labels == i)
-        # skip really small connected components
-        if len(idx_i) < A.shape[0] // 10:
-            continue
-        print('Connected component:', i, 'Number of points:', len(idx_i))
-        preserved_indices.extend(idx_i)
-        Ai = A[np.ix_(idx_i, idx_i)]
-        assert np.allclose(Ai, Ai.T), "The adjacency matrix is not symmetric."
-        Yi = isomap(Ai, n_components)
-        Y.append(Yi)
-        assert len(idx_i) == Yi.shape[0], "The number of points in the connected component does not match the number of rows in the embedding."
-
-    num_clusters = len(Y)
-    Y = np.concatenate(Y)
-    return Y, preserved_indices
-    
 def isomap(A, n_components, X=None):
     """
     Compute the Isomap embedding of a graph.
@@ -201,8 +164,32 @@ def isomap(A, n_components, X=None):
         The Isomap embedding of the graph.
     """
 
-    n_connected_components, _ = scipy.sparse.csgraph.connected_components(A)
-    assert n_connected_components == 1, "The graph is not connected."
+    n_connected_components, component_labels = scipy.sparse.csgraph.connected_components(A)
+    if n_connected_components > 1:
+        if X is None:
+            raise ValueError("The graph is not connected. Please provide the original data.")
+        warnings.warn(
+            (
+                "The number of connected components of the neighbors graph "
+                f"is {n_connected_components} > 1. Completing the graph to fit"
+                " Isomap might be slow. Increase the number of neighbors to "
+                "avoid this issue."
+            ),
+            stacklevel=2,
+        )
+        # use array validated by NearestNeighbors
+        ambient_distances = scipy.spatial.distance.pdist(X, metric="euclidean")
+        ambient_distances = scipy.spatial.distance.squareform(ambient_distances)
+
+        A = _fix_connected_components(
+            X=A,
+            graph=ambient_distances,
+            component_labels=component_labels,
+            n_connected_components=n_connected_components,
+            mode="distance",
+            metric="precomputed",
+        )
+
     # isomap with precomputed distances
     iso = Isomap(metric='precomputed', n_components=n_components)
     # compute geodesic distances

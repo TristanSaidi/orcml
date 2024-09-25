@@ -140,7 +140,7 @@ def noise_vs_orc_experiment(
     return mean_max_orcs, std_max_orcs, valid_noises
 
 
-def compute_metrics(edge_labels, preserved_edges):
+def compute_metrics(edge_labels, preserved_edges, percent=True):
     """ 
     Compute metrics for edge preservation. 
 
@@ -161,4 +161,7 @@ def compute_metrics(edge_labels, preserved_edges):
     N_bad_preserved = np.sum(edge_labels[preserved_edges] == 0)
     percent_good_removed = 1 - (N_good_preserved / N_good_total)
     percent_bad_removed = 1 - (N_bad_preserved / N_bad_total)
-    return percent_good_removed, percent_bad_removed
+    if percent:
+        return percent_good_removed, percent_bad_removed
+    else:
+        return N_good_total - N_good_preserved, N_bad_total - N_bad_preserved

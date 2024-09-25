@@ -225,7 +225,7 @@ def get_edge_labels_from_geodesic(G, data_supersample_dict, scale=10):
     return edge_labels
 
 
-def prune_orc(G, delta, X, verbose=False):
+def prune_orc(G, delta, X, weight="unweighted_dist", verbose=False):
     """
     Prune the graph based on a ORC threshold. Adjust the node coordinates and colors accordingly.
     Parameters
@@ -249,7 +249,7 @@ def prune_orc(G, delta, X, verbose=False):
     preserved_edges = []
     for idx, (i, j, d) in enumerate(G.edges(data=True)):
         if d['ricciCurvature'] > threshold:
-            G_pruned.add_edge(i, j, weight=d['weight'])
+            G_pruned.add_edge(i, j, weight=d[weight])
             preserved_nodes.add(i)
             preserved_nodes.add(j)
             preserved_edges.append(idx)
@@ -291,7 +291,7 @@ def prune_orc(G, delta, X, verbose=False):
         'preserved_scaled_orcs': preserved_scaled_orcs,
     }
 
-def prune_orcml(G, X, eps, lda, delta=0.8, weight='unweighted_dist', verbose=False):
+def prune_orcml(G, X, eps, lda, delta=0.8, weight='unweighted_dist', verbose=False, reattach=True):
     """
     Prune the graph with the orcml method.
     Parameters
@@ -329,7 +329,7 @@ def prune_orcml(G, X, eps, lda, delta=0.8, weight='unweighted_dist', verbose=Fal
             G_prime[i][j]['weight'] = d['weight']
     
     if verbose:
-        print(f"Number of candidate edges: {len(C)}")
+        print(f"Number of candidate edges: {len(C)}, Number of edges in G': {len(G.edges())}")
     # bookkeeping
     num_removed_edges = 0
 
@@ -360,14 +360,19 @@ def prune_orcml(G, X, eps, lda, delta=0.8, weight='unweighted_dist', verbose=Fal
         except nx.NetworkXNoPath:
             d_G_prime = np.inf
 
-        if verbose:
-            print(f"{num}. Edge: {i} - {j}")
-            print(f"d_G_prime: {d_G_prime}")
-            print(f"Threshold: {threshold}")
-            print()
         if d_G_prime > threshold:
             num_removed_edges += 1
             preserved_edges.remove(candidate_edge_indices[num])
+            if verbose:
+                print(f"Removing Edge {num}: {i} - {j}")
+                # print the ratio of d_G'(x,y) to eps
+                if eps is not None:
+                    print(f"d_G'(x,y)/eps: {d_G_prime/eps}")
+                    print(f"Threshold/eps: {threshold/eps}")
+                else:
+                    print(f"d_G'(x,y)/effective_eps: {d_G_prime/effective_eps}")
+                    print(f"Threshold/effective_eps: {threshold/effective_eps}")
+                print()
         else:
             G_pruned.add_node(i)
             G_pruned.add_node(j)
@@ -381,7 +386,7 @@ def prune_orcml(G, X, eps, lda, delta=0.8, weight='unweighted_dist', verbose=Fal
             preserved_nodes.add(i)
             preserved_nodes.add(j)
 
-    if len(preserved_nodes) != len(G.nodes()):
+    if len(preserved_nodes) != len(G.nodes()) and reattach:
         print("Warning: There are isolated nodes in the graph. This will be artificially fixed.")
         print(f"Number of isolated nodes: {len(G.nodes()) - len(preserved_nodes)}")
         missing_nodes = set(G.nodes()).difference(preserved_nodes)
@@ -395,8 +400,7 @@ def prune_orcml(G, X, eps, lda, delta=0.8, weight='unweighted_dist', verbose=Fal
             # assign this edge 0 curvature
             G_pruned[node_idx][nearest_neighbor]['ricciCurvature'] = 0
             G_pruned[node_idx][nearest_neighbor]['scaledricciCurvature'] = 0
-            
-    assert len(G.nodes()) == len(G_pruned.nodes()), "The number of preserved nodes does not match the number of nodes in the pruned graph."
+        assert len(G.nodes()) == len(G_pruned.nodes()), "The number of preserved nodes does not match the number of nodes in the pruned graph."
 
     preserved_orcs = []
     preserved_scaled_orcs = []
@@ -411,6 +415,7 @@ def prune_orcml(G, X, eps, lda, delta=0.8, weight='unweighted_dist', verbose=Fal
         'preserved_edges': preserved_edges,
         'preserved_orcs': preserved_orcs,
         'preserved_scaled_orcs': preserved_scaled_orcs,
+        'preserved_nodes': preserved_nodes,
     }
             
 
