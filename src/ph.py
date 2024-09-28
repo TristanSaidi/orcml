@@ -27,8 +27,19 @@ def rips_ph(A, maxdim=2, thresh=np.inf):
     return proc_dgms
 
 def ph_dist(dgm1, dgm2):
-    # Compute the wasserstein distance between two persistence diagrams. 
-    # Compute the distance per homology dimension.
+    """ 
+    Compute the Wasserstein distance between two persistence diagrams.
+    Parameters
+    ----------
+    dgm1 : list
+        Persistence diagram 1.
+    dgm2 : list
+        Persistence diagram 2.
+    Returns
+    -------
+    distances : list
+        List of Wasserstein distances per homology dimension
+    """
     dgms1_dimensions = np.unique([dgm1[i][0] for i in range(len(dgm1))])
     dgms2_dimensions = np.unique([dgm2[i][0] for i in range(len(dgm2))]) 
     dimensions = np.unique(np.concatenate([dgms1_dimensions, dgms2_dimensions]))

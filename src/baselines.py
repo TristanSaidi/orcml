@@ -59,6 +59,74 @@ def prune_random(G, data, p):
         'preserved_scaled_orcs': preserved_scaled_orcs
     }
 
+
+def prune_orc(G, delta, X, weight="unweighted_dist", verbose=False):
+    """
+    Prune the graph based on a ORC threshold. Adjust the node coordinates and colors accordingly.
+    Parameters
+    ----------
+    G : networkx.Graph
+        The graph to prune.
+    delta : float
+        The threshold for the scaled Ollivier-Ricci curvature.
+    Returns
+    -------
+    G_pruned : networkx.Graph
+        The pruned graph.
+    """
+    G_pruned = nx.Graph()
+    preserved_nodes = set()
+    
+    # bookkeeping
+    num_removed_edges = 0
+
+    threshold = -1 + 2*(2-2*delta) # threshold for the scaled Ollivier-Ricci curvature
+    preserved_edges = []
+    for idx, (i, j, d) in enumerate(G.edges(data=True)):
+        if d['ricciCurvature'] > threshold:
+            G_pruned.add_edge(i, j, weight=d[weight])
+            preserved_nodes.add(i)
+            preserved_nodes.add(j)
+            preserved_edges.append(idx)
+            G_pruned[i][j]['ricciCurvature'] = d['ricciCurvature']
+            G_pruned[i][j]['scaledricciCurvature'] = d['scaledricciCurvature']
+            G_pruned[i][j]['wassersteinDistance'] = d['wassersteinDistance']
+        else:
+            num_removed_edges += 1
+
+    if len(preserved_nodes) != len(G.nodes()):
+        print("Warning: There are isolated nodes in the graph. This will be artificially fixed.")
+        missing_nodes = set(G.nodes()).difference(preserved_nodes)
+        for node_idx in missing_nodes:
+            # find nearest neighbor
+            isolated_node = X[node_idx]
+            dists = np.linalg.norm(X - isolated_node, axis=1)
+            dists[node_idx] = np.inf
+            nearest_neighbor = np.argmin(dists)
+            G_pruned.add_edge(node_idx, nearest_neighbor, weight=dists[nearest_neighbor])
+            # assign this edge 0 curvature
+            G_pruned[node_idx][nearest_neighbor]['ricciCurvature'] = 0
+            G_pruned[node_idx][nearest_neighbor]['scaledricciCurvature'] = 0
+    
+    assert len(G.nodes()) == len(G_pruned.nodes()), "The number of preserved nodes does not match the number of nodes in the pruned graph."
+    
+    preserved_orcs = []
+    preserved_scaled_orcs = []
+    for i, j, d in G_pruned.edges(data=True):
+        preserved_orcs.append(d['ricciCurvature'])
+        preserved_scaled_orcs.append(d['scaledricciCurvature'])
+    if verbose:
+        print(f'{num_removed_edges} of {len(G.edges())} total edges were removed.')
+    A_pruned = nx.adjacency_matrix(G_pruned).toarray()
+    return {
+        'G_pruned': G_pruned,
+        'A_pruned': A_pruned,
+        'preserved_edges': preserved_edges,
+        'preserved_orcs': preserved_orcs,
+        'preserved_scaled_orcs': preserved_scaled_orcs,
+    }
+
+
 def prune_bisection(G, data, n):
     """ 
     Prune the graph with the bisection method proposed by
