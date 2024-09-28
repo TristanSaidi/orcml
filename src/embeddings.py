@@ -143,8 +143,11 @@ def spectral_embedding(A, n_components):
     Y : array-like, shape (n_samples, n_components)
         The spectral embedding of the graph.
     """
+    # convert A to affinity matrix. nonzero entries become exp(-A**2). zero entries become 0
+    W = np.exp(-A**2)
+    W[np.where(A == 0)] = 0
     se = manifold.SpectralEmbedding(n_components=n_components, affinity='precomputed')
-    Y = se.fit_transform(A)
+    Y = se.fit_transform(W)
     return Y
 
 def isomap(A, n_components, X=None):
