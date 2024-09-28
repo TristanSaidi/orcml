@@ -700,25 +700,6 @@ class TwoDimPruningExperiment:
         swiss_roll_data, cluster, swiss_roll_supersample, subsample_indices = return_dict['data'], return_dict['cluster'], return_dict['data_supersample'], return_dict['subsample_indices']
         return swiss_roll_data, cluster, swiss_roll_supersample, subsample_indices, dataset_info
 
-def get_pruned_unpruned_graph(data, exp_params):
-    if exp_params['mode'] == 'nbrs':
-        G, A = make_prox_graph(data, mode=exp_params['mode'], n_neighbors=exp_params['n_neighbors']) # unpruned k-nn graph
-    else:
-        G, A = make_prox_graph(data, mode=exp_params['mode'], epsilon=exp_params['epsilon'])
-    return_dict = graph_orc(G, weight='unweighted_dist')
-    pruned_orcml = prune_orcml(return_dict['G'], data, eps=exp_params['epsilon'], lda=exp_params['lda'], delta=exp_params['delta'])
-    G_orcml = pruned_orcml['G_pruned']
-    A_orcml = nx.adjacency_matrix(G_orcml).toarray()
-    # symmetrize
-    A = np.maximum(A, A.T)
-    return {
-        "G_original": G,
-        "A_original": A,
-        "G_orcml": G_orcml,
-        "A_orcml": A_orcml,
-        "preserved_edges": pruned_orcml['preserved_edges']
-    }
-
 class ManifoldLearningExperiment:
     
     def __init__(self, exp_params):

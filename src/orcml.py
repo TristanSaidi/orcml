@@ -419,6 +419,47 @@ def prune_orcml(G, X, eps, lda, delta=0.8, weight='unweighted_dist', verbose=Fal
     }
             
 
+
+def get_pruned_unpruned_graph(data, exp_params, verbose=False, reattach=True):
+    """ 
+    Build the nearest neighbor graph and prune it with the orcml method.
+    Parameters
+    ----------
+    data : array-like, shape (n_samples, n_features)
+        The dataset.
+    exp_params : dict
+        The experimental parameters.
+    verbose : bool, optional
+        Whether to print verbose output for orcml algorithm.
+    reattach : bool, optional
+        Whether to reattach isolated nodes.
+    Returns
+    -------
+    return_dict : dict
+    """
+    if exp_params['mode'] == 'nbrs':
+        G, A = make_prox_graph(data, mode=exp_params['mode'], n_neighbors=exp_params['n_neighbors']) # unpruned k-nn graph
+    else:
+        G, A = make_prox_graph(data, mode=exp_params['mode'], epsilon=exp_params['epsilon'])
+    return_dict = graph_orc(G, weight='unweighted_dist')
+    orcs = return_dict['orcs']
+    pruned_orcml = prune_orcml(return_dict['G'], data, eps=exp_params['epsilon'], lda=exp_params['lda'], delta=exp_params['delta'], verbose=verbose, reattach=reattach)
+    G_orcml = pruned_orcml['G_pruned']
+    A_orcml = nx.adjacency_matrix(G_orcml).toarray()
+    # symmetrize
+    A_orcml = np.maximum(A_orcml, A_orcml.T)
+    return {
+        "G_original": G,
+        "A_original": A,
+        "G_orcml": G_orcml,
+        "A_orcml": A_orcml,
+        "preserved_edges": pruned_orcml['preserved_edges'],
+        "G_orc": return_dict['G'], # unpruned graph with annotated orc
+        "G_prime": pruned_orcml['G_prime'], # orc pruned graph without validation step
+        "orcs": orcs
+    }
+
+
 def spurious_edge_orc(G_orc, cluster):
     """
     Get the Ollivier-Ricci curvature of spurious edges in the graph.
