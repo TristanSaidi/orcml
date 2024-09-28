@@ -41,13 +41,11 @@ def prune_random(G, data, p):
             G_pruned.add_edge(node_idx, nearest_neighbor, weight=dists[nearest_neighbor])
             # assign this edge 0 curvature
             G_pruned[node_idx][nearest_neighbor]['ricciCurvature'] = 0
-            G_pruned[node_idx][nearest_neighbor]['scaledricciCurvature'] = 0
     
     preserved_orcs = []
     preserved_scaled_orcs = []
     for i, j, d in G_pruned.edges(data=True):
         preserved_orcs.append(d['ricciCurvature'])
-        preserved_scaled_orcs.append(d['scaledricciCurvature'])
 
     assert len(G.nodes()) == len(G_pruned.nodes()), "The number of preserved nodes is not equal to the number of nodes in the graph."
     A_pruned = nx.adjacency_matrix(G_pruned).toarray()
@@ -56,7 +54,6 @@ def prune_random(G, data, p):
         'A_pruned': A_pruned,
         'preserved_edges': preserved_edges,
         'preserved_orcs': preserved_orcs,
-        'preserved_scaled_orcs': preserved_scaled_orcs
     }
 
 
@@ -68,7 +65,7 @@ def prune_orc(G, delta, X, weight="unweighted_dist", verbose=False):
     G : networkx.Graph
         The graph to prune.
     delta : float
-        The threshold for the scaled Ollivier-Ricci curvature.
+        The threshold for the Ollivier-Ricci curvature.
     Returns
     -------
     G_pruned : networkx.Graph
@@ -80,7 +77,7 @@ def prune_orc(G, delta, X, weight="unweighted_dist", verbose=False):
     # bookkeeping
     num_removed_edges = 0
 
-    threshold = -1 + 2*(2-2*delta) # threshold for the scaled Ollivier-Ricci curvature
+    threshold = -1 + 2*(2-2*delta) # threshold for the Ollivier-Ricci curvature
     preserved_edges = []
     for idx, (i, j, d) in enumerate(G.edges(data=True)):
         if d['ricciCurvature'] > threshold:
@@ -89,7 +86,6 @@ def prune_orc(G, delta, X, weight="unweighted_dist", verbose=False):
             preserved_nodes.add(j)
             preserved_edges.append(idx)
             G_pruned[i][j]['ricciCurvature'] = d['ricciCurvature']
-            G_pruned[i][j]['scaledricciCurvature'] = d['scaledricciCurvature']
             G_pruned[i][j]['wassersteinDistance'] = d['wassersteinDistance']
         else:
             num_removed_edges += 1
@@ -106,15 +102,12 @@ def prune_orc(G, delta, X, weight="unweighted_dist", verbose=False):
             G_pruned.add_edge(node_idx, nearest_neighbor, weight=dists[nearest_neighbor])
             # assign this edge 0 curvature
             G_pruned[node_idx][nearest_neighbor]['ricciCurvature'] = 0
-            G_pruned[node_idx][nearest_neighbor]['scaledricciCurvature'] = 0
     
     assert len(G.nodes()) == len(G_pruned.nodes()), "The number of preserved nodes does not match the number of nodes in the pruned graph."
     
     preserved_orcs = []
-    preserved_scaled_orcs = []
     for i, j, d in G_pruned.edges(data=True):
         preserved_orcs.append(d['ricciCurvature'])
-        preserved_scaled_orcs.append(d['scaledricciCurvature'])
     if verbose:
         print(f'{num_removed_edges} of {len(G.edges())} total edges were removed.')
     A_pruned = nx.adjacency_matrix(G_pruned).toarray()
@@ -123,7 +116,6 @@ def prune_orc(G, delta, X, weight="unweighted_dist", verbose=False):
         'A_pruned': A_pruned,
         'preserved_edges': preserved_edges,
         'preserved_orcs': preserved_orcs,
-        'preserved_scaled_orcs': preserved_scaled_orcs,
     }
 
 
@@ -194,15 +186,12 @@ def prune_bisection(G, data, n):
             G_pruned.add_edge(node_idx, nearest_neighbor, weight=dists[nearest_neighbor])
             # assign this edge 0 curvature
             G_pruned[node_idx][nearest_neighbor]['ricciCurvature'] = 0
-            G_pruned[node_idx][nearest_neighbor]['scaledricciCurvature'] = 0
             
     assert len(G.nodes()) == len(G_pruned.nodes()), "The number of preserved nodes does not match the number of nodes in the pruned graph."
 
     preserved_orcs = []
-    preserved_scaled_orcs = []
     for i, j, d in G_pruned.edges(data=True):
         preserved_orcs.append(d['ricciCurvature'])
-        preserved_scaled_orcs.append(d['scaledricciCurvature'])
 
     A_pruned = nx.adjacency_matrix(G).toarray()
     return {
@@ -210,7 +199,6 @@ def prune_bisection(G, data, n):
         'A_pruned': A_pruned,
         'preserved_edges': preserved_edges,
         'preserved_orcs': preserved_orcs,
-        'preserved_scaled_orcs': preserved_scaled_orcs
     }
 
 
@@ -276,13 +264,10 @@ def prune_mst(G, data, thresh):
             G_pruned.add_edge(node_idx, nearest_neighbor, weight=dists[nearest_neighbor])
             # assign this edge 0 curvature
             G_pruned[node_idx][nearest_neighbor]['ricciCurvature'] = 0
-            G_pruned[node_idx][nearest_neighbor]['scaledricciCurvature'] = 0
     
     preserved_orcs = []
-    preserved_scaled_orcs = []
     for i, j, d in G_pruned.edges(data=True):
         preserved_orcs.append(d['ricciCurvature'])
-        preserved_scaled_orcs.append(d['scaledricciCurvature'])
 
     assert len(G.nodes()) == len(G_pruned.nodes()), "The number of preserved nodes does not match the number of nodes in the pruned graph."
     A_pruned = nx.adjacency_matrix(G_pruned).toarray()
@@ -291,7 +276,6 @@ def prune_mst(G, data, thresh):
         'A_pruned': A_pruned,
         'preserved_edges': preserved_edges,
         'preserved_orcs': preserved_orcs,
-        'preserved_scaled_orcs': preserved_scaled_orcs
     }
     
 
@@ -350,10 +334,8 @@ def prune_density(G, data, thresh):
             G_pruned[node_idx][nearest_neighbor]['scaledricciCurvature'] = 0
     
     preserved_orcs = []
-    preserved_scaled_orcs = []
     for i, j, d in G_pruned.edges(data=True):
         preserved_orcs.append(d['ricciCurvature'])
-        preserved_scaled_orcs.append(d['scaledricciCurvature'])
 
     assert len(G.nodes()) == len(G_pruned.nodes()), "The number of preserved nodes does not match the number of nodes in the pruned graph."
     A_pruned = nx.adjacency_matrix(G_pruned).toarray()
@@ -362,7 +344,6 @@ def prune_density(G, data, thresh):
         'A_pruned': A_pruned,
         'preserved_edges': preserved_edges,
         'preserved_orcs': preserved_orcs,
-        'preserved_scaled_orcs': preserved_scaled_orcs
     }
  
 def prune_distance(G, data, thresh):
@@ -413,10 +394,8 @@ def prune_distance(G, data, thresh):
             G_pruned[node_idx][nearest_neighbor]['scaledricciCurvature'] = 0
     
     preserved_orcs = []
-    preserved_scaled_orcs = []
     for i, j, d in G_pruned.edges(data=True):
         preserved_orcs.append(d['ricciCurvature'])
-        preserved_scaled_orcs.append(d['scaledricciCurvature'])
 
     assert len(G.nodes()) == len(G_pruned.nodes()), "The number of preserved nodes does not match the number of nodes in the pruned graph."
     A_pruned = nx.adjacency_matrix(G_pruned).toarray()
@@ -425,5 +404,4 @@ def prune_distance(G, data, thresh):
         'A_pruned': A_pruned,
         'preserved_edges': preserved_edges,
         'preserved_orcs': preserved_orcs,
-        'preserved_scaled_orcs': preserved_scaled_orcs
     }
