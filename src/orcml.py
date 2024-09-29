@@ -260,7 +260,6 @@ def prune_orcml(G, X, eps, lda, delta=0.8, weight='unweighted_dist', verbose=Fal
         else:
             G_prime.add_edge(i, j, weight=d[weight])
             G_prime[i][j]['ricciCurvature'] = d['ricciCurvature']
-            G_prime[i][j]['scaledricciCurvature'] = d['scaledricciCurvature']
             G_prime[i][j]['wassersteinDistance'] = d['wassersteinDistance']
             G_prime[i][j]['unweighted_dist'] = d['unweighted_dist']
             G_prime[i][j]['weight'] = d['weight']
@@ -315,7 +314,6 @@ def prune_orcml(G, X, eps, lda, delta=0.8, weight='unweighted_dist', verbose=Fal
             G_pruned.add_node(j)
             G_pruned.add_edge(i, j, weight=G[i][j][weight])
             G_pruned[i][j]['ricciCurvature'] = G[i][j]['ricciCurvature']
-            G_pruned[i][j]['scaledricciCurvature'] = G[i][j]['scaledricciCurvature']
             G_pruned[i][j]['wassersteinDistance'] = G[i][j]['wassersteinDistance']
             G_pruned[i][j]['unweighted_dist'] = G[i][j]['unweighted_dist']
             G_pruned[i][j]['weight'] = G[i][j]['weight']
@@ -336,14 +334,11 @@ def prune_orcml(G, X, eps, lda, delta=0.8, weight='unweighted_dist', verbose=Fal
             G_pruned.add_edge(node_idx, nearest_neighbor, weight=dists[nearest_neighbor])
             # assign this edge 0 curvature
             G_pruned[node_idx][nearest_neighbor]['ricciCurvature'] = 0
-            G_pruned[node_idx][nearest_neighbor]['scaledricciCurvature'] = 0
         assert len(G.nodes()) == len(G_pruned.nodes()), "The number of preserved nodes does not match the number of nodes in the pruned graph."
 
     preserved_orcs = []
-    preserved_scaled_orcs = []
     for i, j, d in G_pruned.edges(data=True):
         preserved_orcs.append(d['ricciCurvature'])
-        preserved_scaled_orcs.append(d['scaledricciCurvature'])
     A_pruned = nx.adjacency_matrix(G_pruned).toarray()
     return {
         'G_pruned': G_pruned,
@@ -351,7 +346,6 @@ def prune_orcml(G, X, eps, lda, delta=0.8, weight='unweighted_dist', verbose=Fal
         'A_pruned': A_pruned,
         'preserved_edges': preserved_edges,
         'preserved_orcs': preserved_orcs,
-        'preserved_scaled_orcs': preserved_scaled_orcs,
         'preserved_nodes': preserved_nodes,
     }
             
