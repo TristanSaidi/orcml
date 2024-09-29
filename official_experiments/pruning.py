@@ -1,5 +1,4 @@
 import os
-# os.chdir('/home/tristan/Research/Su24/orcml')
 from src.data import *
 from src.embeddings import *
 from src.orcml import *
