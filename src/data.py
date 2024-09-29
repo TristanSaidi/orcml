@@ -611,7 +611,10 @@ def spheres(n_points, noise, supersample=False, supersample_factor=2.5, noise_th
     sphere_2 = Sphere.sample(N=N_total-sum(cluster), n=2, R=1.0)
     sphere_2 += np.array([0, 2.3, 0]) # offset
    
-    spheres = np.concatenate([sphere_1, sphere_2], axis=0)
+    spheres = np.zeros((N_total, 3))
+    spheres[cluster == 1] = sphere_1
+    spheres[cluster == 0] = sphere_2
+    # spheres = np.concatenate([sphere_1, sphere_2], axis=0)
 
     # clip noise and resample if necessary
     z =  noise*np.random.randn(*spheres.shape)
