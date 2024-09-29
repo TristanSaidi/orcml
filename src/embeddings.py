@@ -129,7 +129,7 @@ def tsne(A, n_components, X=None):
     Y = tsne.fit_transform(distances)
     return Y
 
-def spectral_embedding(A, n_components, affinity=False):
+def spectral_embedding(A, n_components, affinity=True):
     """
     Compute the spectral embedding of a graph.
     Parameters
@@ -147,8 +147,12 @@ def spectral_embedding(A, n_components, affinity=False):
         W = A
     # convert A to affinity matrix. nonzero entries become exp(-A**2). zero entries become 0
     else:
+        # scale distances so that max distance is 1
+        A /= np.max(A)
         W = np.exp(-A**2)
         W[np.where(A == 0)] = 0
+        # diagonal entries are set to 1
+        np.fill_diagonal(W, 1)
     se = manifold.SpectralEmbedding(n_components=n_components, affinity='precomputed')
     Y = se.fit_transform(W)
     return Y
