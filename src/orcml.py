@@ -388,3 +388,53 @@ def get_pruned_unpruned_graph(data, exp_params, verbose=False, reattach=True):
         "G_prime": pruned_orcml['G_prime'], # orc pruned graph without validation step
         "orcs": orcs
     }
+
+# create ORCML class
+
+class ORCManL:
+
+    def __init__(self, exp_params, verbose=False, reattach=True):
+        """ 
+        Initialize the ORCML class.
+        Parameters
+        ----------
+        exp_params : dict
+            The experimental parameters. Includes 'mode', 'n_neighbors', 'epsilon', 'lda', 'delta'.
+        verbose : bool, optional
+            Whether to print verbose output for ORCManL algorithm.
+        reattach : bool, optional
+            Whether to reattach isolated nodes.
+        """
+        self.exp_params = exp_params
+        if 'epsilon' not in exp_params:
+            self.exp_params['epsilon'] = None
+        if 'n_neighbors' not in exp_params:
+            self.exp_params['n_neighbors'] = None
+        self.verbose = verbose
+        self.reattach = reattach
+
+    def fit(self, data):
+        """
+        Build nearest neighbor graph of data and apply the ORCManL algorithm.
+        Parameters
+        ----------
+        data : array-like, shape (n_samples, n_features)
+            The dataset.
+        Returns
+        -------
+        self : ORCManL
+        """
+        self.return_dict = get_pruned_unpruned_graph(data, self.exp_params, verbose=self.verbose, reattach=self.reattach)
+        self.G_pruned = self.return_dict['G_orcml']
+        self.A_pruned = self.return_dict['A_orcml']
+        return
+    
+    def get_pruned_graph(self):
+        """
+        Get the pruned graph.
+        Returns
+        -------
+        G_pruned : networkx.Graph
+            The pruned graph.
+        """
+        return self.G_pruned
