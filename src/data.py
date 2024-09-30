@@ -1,8 +1,6 @@
 from sklearn import datasets
 from src.manifold import *
 import numpy as np
-import torch
-import torchvision
 # Data generation functions
 
 def concentric_circles(n_points, factor, noise, supersample=False, supersample_factor=2.5, noise_thresh=0.275):
@@ -632,83 +630,3 @@ def spheres(n_points, noise, supersample=False, supersample_factor=2.5, noise_th
         'subsample_indices': subsample_indices
     }
     return return_dict
-
-
-def get_mnist_data(n_samples, label=None):
-    """
-    Get n_samples MNIST data points with the specified label. If label is None, get n_samples random data points.
-    Parameters:
-
-    n_samples: int
-        Number of data points to get
-    label: int or None
-        Label of the data points to get. If None, get random data points.
-    Returns:
-    ----------
-    mnist_data: np.ndarray
-        n_samples x 784 array of MNIST data points
-    mnist_labels: np.ndarray
-        n_samples array of MNIST labels
-    """
-    transform = torchvision.transforms.Compose([
-        torchvision.transforms.ToTensor(),
-        torchvision.transforms.Lambda(lambda x: x.view(-1))
-    ])
-    mnist = torchvision.datasets.MNIST('data', train=True, download=True, transform=transform)
-    mnist_data = torch.stack([x for x, _ in mnist]).numpy().astype(np.float64)
-    # scale so distances are in a reasonable range
-    mnist_data /= 40
-    mnist_labels = torch.tensor([y for _, y in mnist]).numpy().astype(np.float64)
-    if label is not None:
-        label_indices = np.where(mnist_labels == label)[0]
-        np.random.seed(0)
-        np.random.shuffle(label_indices)
-        label_indices = label_indices[:n_samples]
-        mnist_data = mnist_data[label_indices]
-        mnist_labels = mnist_labels[label_indices]
-    else:
-        np.random.seed(0)
-        indices = np.random.choice(mnist_data.shape[0], n_samples, replace=False)
-        mnist_data = mnist_data[indices]
-        mnist_labels = mnist_labels[indices]
-    return mnist_data, mnist_labels
-
-
-def get_fmnist_data(n_samples, label=None):
-    """
-    Get n_samples Fashion MNIST data points with the specified label. If label is None, get n_samples random data points.
-    Parameters:
-
-    n_samples: int
-        Number of data points to get
-    label: int or None
-        Label of the data points to get. If None, get random data points.
-    Returns:
-    ----------
-    fmnist_data: np.ndarray
-        n_samples x 784 array of Fashion MNIST data points
-    fmnist_labels: np.ndarray
-        n_samples array of Fashion MNIST labels
-    """
-    transform = torchvision.transforms.Compose([
-        torchvision.transforms.ToTensor(),
-        torchvision.transforms.Lambda(lambda x: x.view(-1))
-    ])
-    fmnist = torchvision.datasets.FashionMNIST('data', train=True, download=True, transform=transform)
-    fmnist_data = torch.stack([x for x, _ in fmnist]).numpy().astype(np.float64)
-    # scale so distances are in a reasonable range
-    fmnist_data /= 40
-    fmnist_labels = torch.tensor([y for _, y in fmnist]).numpy().astype(np.float64)
-    if label is not None:
-        label_indices = np.where(fmnist_labels == label)[0]
-        np.random.seed(0)
-        np.random.shuffle(label_indices)
-        label_indices = label_indices[:n_samples]
-        fmnist_data = fmnist_data[label_indices]
-        fmnist_labels = fmnist_labels[label_indices]
-    else:
-        np.random.seed(0)
-        indices = np.random.choice(fmnist_data.shape[0], n_samples, replace=False)
-        fmnist_data = fmnist_data[indices]
-        fmnist_labels = fmnist_labels[indices]
-    return fmnist_data, fmnist_labels
