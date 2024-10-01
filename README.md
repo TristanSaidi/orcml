@@ -14,7 +14,7 @@ export PYTHONPATH=/path/to/repository
 ```
 
 ## Evaluation
-Scripts for evaluation tasks are provided in `official_experiments/`. To run the pruning evaluation, simply run the following command:
+Scripts for evaluation tasks are provided in `official_experiments/`. To run the pruning evaluation for example, simply run the following command:
 ```
 python official_experiments/pruning.py
 ```
