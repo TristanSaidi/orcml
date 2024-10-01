@@ -36,7 +36,7 @@ def plot_data_2D(X, color, title, node_size=10, axes=False, exp_name=None, filen
         path = os.path.join(exp_dir, filename)
         plt.savefig(path)
 
-def plot_graph_2D(X, graph, title, node_color='#1f78b4', edge_color='lightgray', node_size=10, edge_width=1.0, colorbar=False, exp_name=None, filename=None, cmap=plt.cm.Spectral):
+def plot_graph_2D(X, graph, title, node_color='#1f78b4', edge_color='lightgray', node_size=10, edge_width=1.0, colorbar=False, exp_name=None, filename=None, cmap=plt.cm.Spectral, edge_vrange=(-1,1)):
     """
     Plot the graph with the desired node or edge coloring.
     Parameters
@@ -58,7 +58,8 @@ def plot_graph_2D(X, graph, title, node_color='#1f78b4', edge_color='lightgray',
         edge_cmap = plt.cm.coolwarm
     plt.figure(figsize=(6, 6))
     plt.gca().set_aspect('equal')
-    nx.draw(graph, X, node_color=node_color, edge_color=edge_color, node_size=node_size, cmap=cmap, edge_cmap=edge_cmap, edge_vmin=-1, edge_vmax=1, width=edge_width)
+    edge_vmin, edge_vmax = edge_vrange
+    nx.draw(graph, X, node_color=node_color, edge_color=edge_color, node_size=node_size, cmap=cmap, edge_cmap=edge_cmap, edge_vmin=edge_vmin, edge_vmax=edge_vmax, width=edge_width)
     ax = plt.gca()
 
     # Get the current x and y limits
@@ -82,9 +83,12 @@ def plot_graph_2D(X, graph, title, node_color='#1f78b4', edge_color='lightgray',
 
     plt.title(title)
     if colorbar:
-        sm = plt.cm.ScalarMappable(cmap=plt.cm.coolwarm, norm=plt.Normalize(vmin=-1, vmax=1))
+        # make colorbar smaller
+        sm = plt.cm.ScalarMappable(cmap=plt.cm.coolwarm, norm=plt.Normalize(vmin=edge_vmin, vmax=edge_vmax))
         sm._A = []
-        plt.colorbar(sm)
+        cbar = plt.colorbar(sm, shrink=0.3)
+        cbar.ax.set_xlabel('ORC', labelpad=10, loc='center')
+        cbar.ax.xaxis.set_label_position('top') 
     if filename is not None and exp_name is not None:
         os.makedirs('figures', exist_ok=True)
         exp_dir = os.path.join('figures', exp_name)

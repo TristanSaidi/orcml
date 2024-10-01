@@ -339,6 +339,9 @@ def prune_orcml(G, X, eps, lda, delta=0.8, weight='unweighted_dist', verbose=Fal
     preserved_orcs = []
     for i, j, d in G_pruned.edges(data=True):
         preserved_orcs.append(d['ricciCurvature'])
+    G_prime_orcs = []
+    for i, j, d in G_prime.edges(data=True):
+        G_prime_orcs.append(d['ricciCurvature'])
     A_pruned = nx.adjacency_matrix(G_pruned).toarray()
     return {
         'G_pruned': G_pruned,
@@ -346,7 +349,9 @@ def prune_orcml(G, X, eps, lda, delta=0.8, weight='unweighted_dist', verbose=Fal
         'A_pruned': A_pruned,
         'preserved_edges': preserved_edges,
         'preserved_orcs': preserved_orcs,
+        'G_prime_orcs': G_prime_orcs,
         'preserved_nodes': preserved_nodes,
+        'C': C,
     }
             
 
@@ -386,7 +391,9 @@ def get_pruned_unpruned_graph(data, exp_params, verbose=False, reattach=True):
         "preserved_edges": pruned_orcml['preserved_edges'],
         "G_orc": return_dict['G'], # unpruned graph with annotated orc
         "G_prime": pruned_orcml['G_prime'], # orc pruned graph without validation step
-        "orcs": orcs
+        "G_prime_orcs": pruned_orcml['G_prime_orcs'],
+        "orcs": orcs,
+        "C": pruned_orcml['C'],
     }
 
 # create ORCML class
