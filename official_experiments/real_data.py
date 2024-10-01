@@ -15,9 +15,10 @@ import decoupler as dc
 
 sc.set_figure_params(dpi_save=1200)
 
-def pbmc_experiment():
-    save_dir = 'outputs/official_experiments/pbmc'
+def pbmc_experiment(experiment_dir):
+    save_dir = f'{experiment_dir}/pbmc'
     os.makedirs(save_dir, exist_ok=True)
+
     save_dir_original = f'{save_dir}/original'
     save_dir_orcml = f'{save_dir}/orcml'
     os.makedirs(save_dir_original, exist_ok=True)
@@ -134,8 +135,8 @@ def pbmc_experiment():
     ######################## ORCManL Pruned Graph ########################
 
 
-    def plot_pbmc(X, graph, node_color, emb_alg, save_dir):
-        plot_graph_2D(X, graph, node_color=node_color, title=None, node_size=1, edge_width=0.2)
+    def plot_pbmc(X, graph, node_color, emb_alg, save_dir, extra_title=None):
+        plot_graph_2D(X, graph, node_color=node_color, title=None, node_size=1, edge_width=0.4)
         plt.axis('on')
         # turn on axes
         ax = plt.gca()
@@ -153,7 +154,11 @@ def pbmc_experiment():
         ax.set_xticks([])
         ax.set_yticks([])
         plt.show()
-        plt.savefig(f'{save_dir}/pbmc_{emb_alg}.png', dpi=1200)
+        if extra_title is not None:
+            title = f'{emb_alg}_{extra_title}'
+        else:
+            title = f'{emb_alg}'
+        plt.savefig(f'{save_dir}/pbmc_{title}.png', dpi=1200)
 
 
     # umap original  
@@ -163,9 +168,9 @@ def pbmc_experiment():
     plot_pbmc(tsne_original, G_original, pbmc_labels_int[G_original.nodes()], 'tSNE', save_dir_original)
 
     # spectral embedding original
-    plot_pbmc(spectral_embedding_original_0_1, G_original, pbmc_labels_int[G_original.nodes()], 'spectral', save_dir_original)
-    plot_pbmc(spectral_embedding_original_0_2, G_original, pbmc_labels_int[G_original.nodes()], 'spectral', save_dir_original)
-    plot_pbmc(spectral_embedding_original_1_2, G_original, pbmc_labels_int[G_original.nodes()], 'spectral', save_dir_original)
+    plot_pbmc(spectral_embedding_original_0_1, G_original, pbmc_labels_int[G_original.nodes()], 'spectral', save_dir_original, '0_1')
+    plot_pbmc(spectral_embedding_original_0_2, G_original, pbmc_labels_int[G_original.nodes()], 'spectral', save_dir_original, '0_2')
+    plot_pbmc(spectral_embedding_original_1_2, G_original, pbmc_labels_int[G_original.nodes()], 'spectral', save_dir_original, '1_2')
 
     # umap orcml
     umap_orcml_unscrambled = umap_orcml[np.argsort(list(G_orcml.nodes()))]
@@ -179,14 +184,14 @@ def pbmc_experiment():
     spectral_embedding_orcml_0_1_unscrambled = spectral_embedding_orcml_0_1[np.argsort(list(G_orcml.nodes()))]
     spectral_embedding_orcml_0_2_unscrambled = spectral_embedding_orcml_0_2[np.argsort(list(G_orcml.nodes()))]
     spectral_embedding_orcml_1_2_unscrambled = spectral_embedding_orcml_1_2[np.argsort(list(G_orcml.nodes()))]
-    plot_pbmc(spectral_embedding_orcml_0_1_unscrambled, G_orcml, pbmc_labels_orcml_int, 'spectral', save_dir_orcml)
-    plot_pbmc(spectral_embedding_orcml_0_2_unscrambled, G_orcml, pbmc_labels_orcml_int, 'spectral', save_dir_orcml)
-    plot_pbmc(spectral_embedding_orcml_1_2_unscrambled, G_orcml, pbmc_labels_orcml_int, 'spectral', save_dir_orcml)
+    plot_pbmc(spectral_embedding_orcml_0_1_unscrambled, G_orcml, pbmc_labels_orcml_int, 'spectral', save_dir_orcml, '0_1')
+    plot_pbmc(spectral_embedding_orcml_0_2_unscrambled, G_orcml, pbmc_labels_orcml_int, 'spectral', save_dir_orcml, '0_2')
+    plot_pbmc(spectral_embedding_orcml_1_2_unscrambled, G_orcml, pbmc_labels_orcml_int, 'spectral', save_dir_orcml, '1_2')
 
 
 
-def alm_allen_brain_experiment():
-    save_dir = 'outputs/official_experiments/alm_allen_brain'
+def alm_allen_brain_experiment(experiment_dir):
+    save_dir = f'{experiment_dir}/alm_allen_brain'
     os.makedirs(save_dir, exist_ok=True)
     # Brain scRNAseq dataset. Indices are 1:12552
     path = 'data/MouseV1_MouseALM_HumanMTG/MouseV1_MouseALM_HumanMTG.csv'
@@ -339,7 +344,11 @@ def alm_allen_brain_experiment():
     plt.savefig(f'{save_dir}/alm_orcml_tsne_10k_2D.png', dpi=1200)
 
 if __name__ == '__main__':
+    import datetime
+    experiment_name = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    experiment_dir = f'outputs/official_experiments/{experiment_name}'
+    os.makedirs(experiment_dir, exist_ok=True)
     print('Running PBMC experiment')
-    pbmc_experiment()
-    print('\n\nRunning ALM Allen Brain experiment')
-    alm_allen_brain_experiment()
+    pbmc_experiment(experiment_dir)
+    # print('\n\nRunning ALM Allen Brain experiment')
+    # alm_allen_brain_experiment(experiment_name)
