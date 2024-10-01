@@ -15,10 +15,13 @@ import decoupler as dc
 
 sc.set_figure_params(dpi_save=1200)
 
-
 def pbmc_experiment():
     save_dir = 'outputs/official_experiments/pbmc'
     os.makedirs(save_dir, exist_ok=True)
+    save_dir_original = f'{save_dir}/original'
+    save_dir_orcml = f'{save_dir}/orcml'
+    os.makedirs(save_dir_original, exist_ok=True)
+    os.makedirs(save_dir_orcml, exist_ok=True)
     # PBMC 10k dataset
     pbmc_data = sc.datasets.pbmc68k_reduced()
     sc.tl.pca(pbmc_data, svd_solver='arpack')
@@ -44,8 +47,8 @@ def pbmc_experiment():
     }
 
     # get pruned and unpruned graphs
-    return_dict = get_pruned_unpruned_graph(pbmc_data_X_pca, exp_params, verbose=True, reattach=False)
-    _, A_original, G_orcml, A_orcml = return_dict['G_original'], return_dict['A_original'], return_dict['G_orcml'], return_dict['A_orcml']
+    return_dict = get_pruned_unpruned_graph(pbmc_data_X_pca, exp_params, verbose=True)
+    G_original, A_original, G_orcml, A_orcml = return_dict['G_original'], return_dict['A_original'], return_dict['G_orcml'], return_dict['A_orcml']
     pbmc_data_orcml = pbmc_data_orcml[list(G_orcml.nodes())]
     pbmc_labels_orcml_int = pbmc_labels_int[list(G_orcml.nodes())]
     # connected components of original
@@ -56,10 +59,43 @@ def pbmc_experiment():
     n_connected_components, _ = scipy.sparse.csgraph.connected_components(A_orcml)
     print(f'Number of connected components in orcml graph: {n_connected_components}')
 
+    cmap = plt.cm.Spectral
+    unique_pbmc_labels_str = np.unique(pbmc_labels.to_numpy())
+
+
+    from matplotlib.lines import Line2D
+
+    # Create the figure
+    _, ax = plt.subplots()
+
+    # Number of unique labels
+    n_labels = len(unique_pbmc_labels_str)
+
+    # Create legend handles with dots
+    legend_elements = [
+        Line2D([0], [0], marker='o', color='w', label=label,
+            markerfacecolor=cmap(i / (n_labels - 1)), markersize=10)
+        for i, label in enumerate(unique_pbmc_labels_str)
+    ]
+
+    # Add the legend to the plot
+    ax.legend(handles=legend_elements, loc='center')
+
+    # Remove axes (since we don't want any plot)
+    ax.set_axis_off()
+
+    # Display the legend
+    plt.show()
+    plt.savefig(f'{save_dir}/pbmc_legend.png', dpi=1200)
+
     ######################## Unpruned Graph ########################
     # run umap
     umap_original = UMAP(A_original, n_neighbors=10, n_components=2)
     pbmc_data_original.obsm['X_umap'] = umap_original
+
+    # run tSNE
+    tsne_original = tsne(A_original, n_components=2)
+    pbmc_data_original.obsm['X_tsne'] = tsne_original
 
     # run spectral embedding: might need to hand-select eigenvectors here because of the REP
     spectral_embedding_original = spectral_embedding(A_original, n_components=3)
@@ -76,6 +112,10 @@ def pbmc_experiment():
     # run umap
     umap_orcml = UMAP(A_orcml, n_neighbors=10, n_components=2, X=pbmc_data_X_pca[list(G_orcml.nodes())])
     pbmc_data_orcml.obsm['X_umap'] = umap_orcml
+
+    # run tSNE
+    tsne_orcml = tsne(A_orcml, n_components=2, X=pbmc_data_X_pca[list(G_orcml.nodes())])
+    pbmc_data_orcml.obsm['X_tsne'] = tsne_orcml
     
     # run spectral embedding: might need to hand-select eigenvectors here because of the REP
     spectral_embedding_orcml = spectral_embedding(A_orcml, n_components=3)
@@ -93,30 +133,57 @@ def pbmc_experiment():
     pbmc_data_orcml.obsm['X_spectral_1_2'] = spectral_embedding_orcml_1_2
     ######################## ORCManL Pruned Graph ########################
 
-    # plot umap and spectral embeddings
-    fig = sc.pl.embedding(pbmc_data_orcml, basis="spectral_0_1", color='bulk_labels', return_fig=True)
-    fig.savefig(f'{save_dir}/spectral_embedding_evecs_0_1_orcml.png', dpi=1200)
 
-    fig = sc.pl.embedding(pbmc_data_orcml, basis="spectral_0_2", color='bulk_labels', return_fig=True)
-    fig.savefig(f'{save_dir}/spectral_embedding_evecs_0_2_orcml.png', dpi=1200)
+    def plot_pbmc(X, graph, node_color, emb_alg, save_dir):
+        plot_graph_2D(X, graph, node_color=node_color, title=None, node_size=1, edge_width=0.2)
+        plt.axis('on')
+        # turn on axes
+        ax = plt.gca()
+        ax.spines['top'].set_visible(True)
+        ax.spines['right'].set_visible(True)
+        ax.spines['left'].set_visible(True)
+        ax.spines['bottom'].set_visible(True)
+        ax.set_xlabel(f'{emb_alg}1')
+        # make xlabel bigger
+        ax.xaxis.label.set_size(20)
+        ax.set_ylabel(f'{emb_alg}2')
+        # make ylabel bigger
+        ax.yaxis.label.set_size(20)
+        # turn off ticks
+        ax.set_xticks([])
+        ax.set_yticks([])
+        plt.show()
+        plt.savefig(f'{save_dir}/pbmc_{emb_alg}.png', dpi=1200)
 
-    fig = sc.pl.embedding(pbmc_data_orcml, basis="spectral_1_2", color='bulk_labels', return_fig=True)
-    fig.savefig(f'{save_dir}/spectral_embedding_evecs_1_2_orcml.png', dpi=1200)
 
-    fig = sc.pl.embedding(pbmc_data_original, basis="spectral_0_1", color='bulk_labels', return_fig=True)
-    fig.savefig(f'{save_dir}/spectral_embedding_evecs_0_1_original.png', dpi=1200)
+    # umap original  
+    plot_pbmc(umap_original, G_original, pbmc_labels_int[G_original.nodes()], 'UMAP', save_dir_original)
 
-    fig = sc.pl.embedding(pbmc_data_original, basis="spectral_0_2", color='bulk_labels', return_fig=True)
-    fig.savefig(f'{save_dir}/spectral_embedding_evecs_0_2_original.png', dpi=1200)
+    # tsne original
+    plot_pbmc(tsne_original, G_original, pbmc_labels_int[G_original.nodes()], 'tSNE', save_dir_original)
 
-    fig = sc.pl.embedding(pbmc_data_original, basis="spectral_1_2", color='bulk_labels', return_fig=True)
-    fig.savefig(f'{save_dir}/spectral_embedding_evecs_1_2_original.png', dpi=1200)
+    # spectral embedding original
+    plot_pbmc(spectral_embedding_original_0_1, G_original, pbmc_labels_int[G_original.nodes()], 'spectral', save_dir_original)
+    plot_pbmc(spectral_embedding_original_0_2, G_original, pbmc_labels_int[G_original.nodes()], 'spectral', save_dir_original)
+    plot_pbmc(spectral_embedding_original_1_2, G_original, pbmc_labels_int[G_original.nodes()], 'spectral', save_dir_original)
 
-    fig = sc.pl.umap(pbmc_data_orcml, color='bulk_labels', return_fig=True)
-    fig.savefig(f'{save_dir}/umap_orcml.png', dpi=1200)
+    # umap orcml
+    umap_orcml_unscrambled = umap_orcml[np.argsort(list(G_orcml.nodes()))]
+    plot_pbmc(umap_orcml_unscrambled, G_orcml, pbmc_labels_orcml_int, 'UMAP', save_dir_orcml)
 
-    fig = sc.pl.umap(pbmc_data_original, color='bulk_labels', return_fig=True)
-    fig.savefig(f'{save_dir}/umap_original.png', dpi=1200)    
+    # tsne orcml
+    tsne_orcml_unscrambled = tsne_orcml[np.argsort(list(G_orcml.nodes()))]
+    plot_pbmc(tsne_orcml_unscrambled, G_orcml, pbmc_labels_orcml_int, 'tSNE', save_dir_orcml)
+
+    # spectral embedding orcml
+    spectral_embedding_orcml_0_1_unscrambled = spectral_embedding_orcml_0_1[np.argsort(list(G_orcml.nodes()))]
+    spectral_embedding_orcml_0_2_unscrambled = spectral_embedding_orcml_0_2[np.argsort(list(G_orcml.nodes()))]
+    spectral_embedding_orcml_1_2_unscrambled = spectral_embedding_orcml_1_2[np.argsort(list(G_orcml.nodes()))]
+    plot_pbmc(spectral_embedding_orcml_0_1_unscrambled, G_orcml, pbmc_labels_orcml_int, 'spectral', save_dir_orcml)
+    plot_pbmc(spectral_embedding_orcml_0_2_unscrambled, G_orcml, pbmc_labels_orcml_int, 'spectral', save_dir_orcml)
+    plot_pbmc(spectral_embedding_orcml_1_2_unscrambled, G_orcml, pbmc_labels_orcml_int, 'spectral', save_dir_orcml)
+
+
 
 def alm_allen_brain_experiment():
     save_dir = 'outputs/official_experiments/alm_allen_brain'
@@ -166,7 +233,7 @@ def alm_allen_brain_experiment():
     }
     # get pruned and unpruned graphs
     return_dict = get_pruned_unpruned_graph(alm_data_float_filtered, exp_params, verbose=True)
-    _, A_original, _, A_orcml = return_dict['G_original'], return_dict['A_original'], return_dict['G_orcml'], return_dict['A_orcml']
+    G_original, A_original, G_orcml, A_orcml = return_dict['G_original'], return_dict['A_original'], return_dict['G_orcml'], return_dict['A_orcml']
 
     # convert alm labels to color
     colors = ['#33B964', '#257CDF',"#D10101" ]
@@ -174,7 +241,8 @@ def alm_allen_brain_experiment():
 
     # isomap embedding of the original graph
     y_original = isomap(A_original, 2)
-    plot_data_2D(y_original, color=alm_labels_color, title=None, axes=True, node_size=0.3)
+    plot_graph_2D(y_original, G_original, node_color=alm_labels_color[G_original.nodes()], title=None, node_size=0.3, edge_width=0.1)
+    plt.axis('on')
     ax = plt.gca()
     ax.spines['top'].set_visible(True)
     ax.spines['right'].set_visible(True)
@@ -191,7 +259,8 @@ def alm_allen_brain_experiment():
     y_orcml = isomap(A_orcml, 2, X=alm_data_float_filtered)
     # rotate the plot
     y_orcml_rot = y_orcml[:, [1, 0]]
-    plot_data_2D(y_orcml_rot, color=alm_labels_color, title=None, axes=True, node_size=0.3)
+    plot_graph_2D(y_orcml_rot, G_orcml, node_color=alm_labels_color[G_orcml.nodes()], title=None, node_size=0.3, edge_width=0.1)
+    plt.axis('on')
     ax = plt.gca()
     ax.spines['top'].set_visible(True)
     ax.spines['right'].set_visible(True)
@@ -207,7 +276,8 @@ def alm_allen_brain_experiment():
 
     # umap embedding of the original graph
     umap_original = UMAP(A_original, n_neighbors=20, n_components=2)
-    plot_data_2D(umap_original, color=alm_labels_color, title=None, axes=True, node_size=1)
+    plot_graph_2D(umap_original, G_original, node_color=alm_labels_color[G_original.nodes()], title=None, node_size=0.3, edge_width=0.1)
+    plt.axis('on')
     ax = plt.gca()
     ax.spines['top'].set_visible(True)
     ax.spines['right'].set_visible(True)
@@ -222,7 +292,8 @@ def alm_allen_brain_experiment():
 
     # tsne embedding of the original graph
     tsne_original = tsne(A_original, n_components=2)
-    plot_data_2D(tsne_original, color=alm_labels_color, title=None, axes=True, node_size=1)
+    plot_graph_2D(tsne_original, G_original, node_color=alm_labels_color[G_original.nodes()], title=None, node_size=0.3, edge_width=0.1)
+    plt.axis('on')
     ax = plt.gca()
     ax.spines['top'].set_visible(True)
     ax.spines['right'].set_visible(True)
@@ -237,7 +308,8 @@ def alm_allen_brain_experiment():
 
     # umap embedding of the orcml pruned graph
     umap_orcml = UMAP(A_orcml, n_neighbors=20, n_components=2, X=alm_data_float_filtered)
-    plot_data_2D(umap_orcml, color=alm_labels_color, title=None, axes=True, node_size=1)
+    plot_graph_2D(umap_orcml, G_orcml, node_color=alm_labels_color[G_orcml.nodes()], title=None, node_size=0.3, edge_width=0.1)
+    plt.axis('on')
     ax = plt.gca()
     ax.spines['top'].set_visible(True)
     ax.spines['right'].set_visible(True)
@@ -252,7 +324,8 @@ def alm_allen_brain_experiment():
 
     # tsne embedding of the orcml pruned graph
     tsne_orcml = tsne(A_orcml, n_components=2, X=alm_data_float_filtered)
-    plot_data_2D(tsne_orcml, color=alm_labels_color, title=None, axes=True, node_size=1)
+    plot_graph_2D(tsne_orcml, G_orcml, node_color=alm_labels_color[G_orcml.nodes()], title=None, node_size=0.3, edge_width=0.1)
+    plt.axis('on')
     ax = plt.gca()
     ax.spines['top'].set_visible(True)
     ax.spines['right'].set_visible(True)
