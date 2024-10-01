@@ -56,10 +56,31 @@ def plot_graph_2D(X, graph, title, node_color='#1f78b4', edge_color='lightgray',
         edge_cmap = plt.cm.viridis
     else:
         edge_cmap = plt.cm.coolwarm
-    plt.figure(dpi=1200)
-    nx.draw(graph, X, node_color=node_color, edge_color=edge_color, node_size=node_size, cmap=cmap, edge_cmap=edge_cmap, edge_vmin=-1, edge_vmax=1, width=edge_width)
-    plt.title(title)
+    plt.figure(figsize=(6, 6))
     plt.gca().set_aspect('equal')
+    nx.draw(graph, X, node_color=node_color, edge_color=edge_color, node_size=node_size, cmap=cmap, edge_cmap=edge_cmap, edge_vmin=-1, edge_vmax=1, width=edge_width)
+    ax = plt.gca()
+
+    # Get the current x and y limits
+    x_limits = ax.get_xlim()
+    y_limits = ax.get_ylim()
+
+    # Calculate the range of x and y limits
+    x_range = x_limits[1] - x_limits[0]
+    y_range = y_limits[1] - y_limits[0]
+
+    # Find the larger range between x and y to make them equal
+    max_range = max(x_range, y_range)
+
+    # Find the center points of the current x and y limits
+    x_center = (x_limits[0] + x_limits[1]) / 2
+    y_center = (y_limits[0] + y_limits[1]) / 2
+
+    # Adjust both x and y limits to be centered around the midpoint
+    ax.set_xlim([x_center - max_range / 2, x_center + max_range / 2])
+    ax.set_ylim([y_center - max_range / 2, y_center + max_range / 2])
+
+    plt.title(title)
     if colorbar:
         sm = plt.cm.ScalarMappable(cmap=plt.cm.coolwarm, norm=plt.Normalize(vmin=-1, vmax=1))
         sm._A = []
