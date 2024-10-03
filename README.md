@@ -1,7 +1,7 @@
-# *ORC-ManL*: Recovering manifold structure using Ollivier-Ricci Curvature
+# *ORC-ManL*: Recovering Manifold structure using Ollivier-Ricci Curvature
 
 ## Introduction
-This repository contains the official implementation of ORC-ManL, an algorithm that uses discrete graph curvature to prune nearest-neighbor graphs.
+This repository contains the official implementation of ORC-ManL, an algorithm that uses discrete graph curvature to prune nearest-neighbor graphs. Our paper presenting this algorithm can be viewed here: https://arxiv.org/abs/2410.01149.
 
 <div align="center">
   <img src="https://github.com/TristanSaidi/orcml/blob/main/demo.gif" alt="Demo GIF">
