@@ -1,10 +1,12 @@
 import os
-from src.data import *
-from src.embeddings import *
-from src.orcml import *
-from src.plotting import *
-from src.eval_utils import *
-from src.baselines import *
+from data.data import *
+from src.experiments.embeddings import *
+from src.orcmanl import *
+from src.utils.plotting import *
+from src.utils.eval_utils import *
+from src.utils.graph_utils import *
+from src.experiments.utils.exp_utils import *
+from src.experiments.baselines import *
 import datetime
 import json
 
@@ -23,7 +25,7 @@ class OneDimPruningExperiment:
 
         self.param_map = {
             'concentric_circles': {
-                'k': 20, 
+                'n_neighbors': 20, 
                 'lda': 0.01, 
                 'delta': 0.8, 
                 'orc_delta':0.8, 
@@ -35,7 +37,7 @@ class OneDimPruningExperiment:
                 'edge_label_est_scale': 10 
             },
             'swiss_roll': {
-                'k': 20, 
+                'n_neighbors': 20, 
                 'lda': 0.01, 
                 'delta': 0.8, 
                 'orc_delta':0.8, 
@@ -47,7 +49,7 @@ class OneDimPruningExperiment:
                 'edge_label_est_scale': 10 
             },
             'moons': {
-                'k': 20, 
+                'n_neighbors': 20, 
                 'lda': 0.01, 
                 'delta': 0.8, 
                 'orc_delta':0.8, 
@@ -59,7 +61,7 @@ class OneDimPruningExperiment:
                 'edge_label_est_scale': 10 
             },
             's_curve': {
-                'k': 20, 
+                'n_neighbors': 20, 
                 'lda': 0.01, 
                 'delta': 0.8, 
                 'orc_delta':0.8, 
@@ -71,7 +73,7 @@ class OneDimPruningExperiment:
                 'edge_label_est_scale': 12 
             },
             'cassini': {
-                'k': 20, 
+                'n_neighbors': 20, 
                 'lda': 0.01, 
                 'delta': 0.8, 
                 'orc_delta':0.8, 
@@ -83,7 +85,7 @@ class OneDimPruningExperiment:
                 'edge_label_est_scale': 20 
             },
             'mixture_of_gaussians': {
-                'k': 20,
+                'n_neighbors': 20,
                 'lda': 0.01,
                 'delta': 0.8,
                 'orc_delta':0.8,
@@ -112,9 +114,9 @@ class OneDimPruningExperiment:
         
         exp_params = self.param_map[dataset]
 
-        # orcml
-        percent_good_total_orcml = [] # percent of good edges removed by orcml
-        percent_bad_total_orcml = [] # percent of bad edges removed by orcml
+        # orcmanl
+        percent_good_total_orcmanl = [] # percent of good edges removed by orcmanl
+        percent_bad_total_orcmanl = [] # percent of bad edges removed by orcmanl
         
         # orc only
         percent_good_total_orc = [] # percent of good edges removed by orc
@@ -142,8 +144,8 @@ class OneDimPruningExperiment:
             data, cluster, data_supersample, subsample_indices, dataset_info = self.map[dataset]()
 
             # knn
-            G, A = make_prox_graph(data, mode='nbrs', n_neighbors=exp_params['k'])
-
+            return_dict = prune_helper(data, exp_params=exp_params)
+            G = return_dict['G_original']
             edge_labels = get_edge_labels(
                 G, 
                 cluster=cluster, 
@@ -159,28 +161,22 @@ class OneDimPruningExperiment:
                 print('No bad edges formed, resampling...')
                 continue
 
-            # orc
-            return_dict = graph_orc(G, weight='unweighted_dist')
-            G_orc = return_dict['G']
-            # prune with orcml
-            print('Pruning with orcml...')
-            pruned_orcml = prune_orcml(G_orc, data, eps=None, lda=exp_params['lda'], delta=exp_params['delta'])
             print('Pruning with orc...')
-            pruned_orc = prune_orc(G_orc, exp_params['orc_delta'], data)
+            pruned_orc = prune_orc(G, exp_params['orc_delta'], data)
             print('Pruning with bisection...')
-            pruned_bisection = prune_bisection(G_orc, data, n=exp_params['n_bisection'])
+            pruned_bisection = prune_bisection(G, data, n=exp_params['n_bisection'])
             print('Pruning with mst...')
-            pruned_mst = prune_mst(G_orc, data, exp_params['mst_thresh'])
+            pruned_mst = prune_mst(G, data, exp_params['mst_thresh'])
             print('Pruning with density...')
-            pruned_density = prune_density(G_orc, data, exp_params['density_thresh'])
+            pruned_density = prune_density(G, data, exp_params['density_thresh'])
             print('Pruning with distance...')
-            pruned_distance = prune_distance(G_orc, data, exp_params['distance_thresh'])
+            pruned_distance = prune_distance(G, data, exp_params['distance_thresh'])
 
             # get number of good edges removed, number of bad edges removed for each meth
-            percent_good_removed, percent_bad_removed = compute_metrics(edge_labels, pruned_orcml['preserved_edges'])
-            percent_good_total_orcml.append(percent_good_removed)
-            percent_bad_total_orcml.append(percent_bad_removed)
-            print(f'orcml: {100*percent_good_removed:.2f}% good edges removed, {100*percent_bad_removed:.2f}% bad edges removed')
+            percent_good_removed, percent_bad_removed = compute_metrics(edge_labels, return_dict['non_shortcut_edges'])
+            percent_good_total_orcmanl.append(percent_good_removed)
+            percent_bad_total_orcmanl.append(percent_bad_removed)
+            print(f'orcmanl: {100*percent_good_removed:.2f}% good edges removed, {100*percent_bad_removed:.2f}% bad edges removed')
 
             percent_good_removed, percent_bad_removed = compute_metrics(edge_labels, pruned_orc['preserved_edges'])
             percent_good_total_orc.append(percent_good_removed)
@@ -206,19 +202,18 @@ class OneDimPruningExperiment:
             percent_good_total_distance.append(percent_good_removed)
             percent_bad_total_distance.append(percent_bad_removed)
             print(f'distance: {100*percent_good_removed:.2f}% good edges removed, {100*percent_bad_removed:.2f}% bad edges removed')
-            
             i += 1
             
         # plot results for last run
         if experiment_name is not None:
             # save metrics
-            orcml_metrics = {
-                'orcml_lda': exp_params['lda'],
-                'orcml_delta': exp_params['delta'],
-                'percent_good_total_mean': np.mean(percent_good_total_orcml),
-                'percent_good_total_std': np.std(percent_good_total_orcml),
-                'percent_bad_total_mean': np.mean(percent_bad_total_orcml),
-                'percent_bad_total_std': np.std(percent_bad_total_orcml),
+            orcmanl_metrics = {
+                'orcmanl_lda': exp_params['lda'],
+                'orcmanl_delta': exp_params['delta'],
+                'percent_good_total_mean': np.mean(percent_good_total_orcmanl),
+                'percent_good_total_std': np.std(percent_good_total_orcmanl),
+                'percent_bad_total_mean': np.mean(percent_bad_total_orcmanl),
+                'percent_bad_total_std': np.std(percent_bad_total_orcmanl),
             }
 
             orc_metrics = {
@@ -264,8 +259,8 @@ class OneDimPruningExperiment:
             metrics = {
                 'num_trials': n_iter,
                 'seed': seed,
-                'k-NN, k': exp_params['k'],
-                'orcml': orcml_metrics,
+                'k-NN, k': exp_params['n_neighbors'],
+                'orcmanl': orcmanl_metrics,
                 'orc': orc_metrics,
                 'bisection': bisection_metrics,
                 'mst': mst_metrics,
@@ -360,7 +355,7 @@ class TwoDimPruningExperiment:
 
         self.param_map = {
             'torii': {
-                'k': 20, 
+                'n_neighbors': 20, 
                 'lda': 0.01, 
                 'delta': 0.8, 
                 'orc_delta':0.8, 
@@ -372,7 +367,7 @@ class TwoDimPruningExperiment:
                 'edge_label_est_scale': 10 
             },
             'hyperboloids': {
-                'k': 20, 
+                'n_neighbors': 20, 
                 'lda': 0.01, 
                 'delta': 0.8, 
                 'orc_delta':0.8, 
@@ -384,7 +379,7 @@ class TwoDimPruningExperiment:
                 'edge_label_est_scale': 10 
             },
             'parab_and_hyp': {
-                'k': 20, 
+                'n_neighbors': 20, 
                 'lda': 0.01, 
                 'delta': 0.8, 
                 'orc_delta':0.8, 
@@ -396,7 +391,7 @@ class TwoDimPruningExperiment:
                 'edge_label_est_scale': 10 
             },
             'double_paraboloid': {
-                'k': 20, 
+                'n_neighbors': 20, 
                 'lda': 0.01, 
                 'delta': 0.8, 
                 'orc_delta':0.8, 
@@ -408,7 +403,7 @@ class TwoDimPruningExperiment:
                 'edge_label_est_scale': 10 
             },
             '3D_swiss_roll': {
-                'k': 20, 
+                'n_neighbors': 20, 
                 'lda': 0.01, 
                 'delta': 0.8, 
                 'orc_delta':0.8, 
@@ -438,9 +433,9 @@ class TwoDimPruningExperiment:
         
         exp_params = self.param_map[dataset]
 
-        # orcml
-        percent_good_total_orcml = [] # percent of good edges removed by orcml
-        percent_bad_total_orcml = [] # percent of bad edges removed by orcml
+        # orcmanl
+        percent_good_total_orcmanl = [] # percent of good edges removed by orcmanl
+        percent_bad_total_orcmanl = [] # percent of bad edges removed by orcmanl
         
         # orc only
         percent_good_total_orc = [] # percent of good edges removed by orc
@@ -468,7 +463,8 @@ class TwoDimPruningExperiment:
             data, cluster, data_supersample, subsample_indices, dataset_info = self.map[dataset]()
 
             # knn
-            G, A = make_prox_graph(data, mode='nbrs', n_neighbors=exp_params['k'])
+            return_dict = prune_helper(data, exp_params=exp_params)
+            G = return_dict['G_original']
             edge_labels = get_edge_labels(
                 G, 
                 cluster=cluster, 
@@ -484,28 +480,22 @@ class TwoDimPruningExperiment:
                 print('No bad edges formed, resampling...')
                 continue
 
-            # orc
-            return_dict = graph_orc(G, weight='unweighted_dist')
-            G_orc = return_dict['G']
-            # prune with orcml
-            print('Pruning with orcml...')
-            pruned_orcml = prune_orcml(G_orc, data, eps=None, lda=exp_params['lda'], delta=exp_params['delta'])
             print('Pruning with orc...')
-            pruned_orc = prune_orc(G_orc, exp_params['orc_delta'], data)
+            pruned_orc = prune_orc(G, exp_params['orc_delta'], data)
             print('Pruning with bisection...')
-            pruned_bisection = prune_bisection(G_orc, data, n=exp_params['n_bisection'])
+            pruned_bisection = prune_bisection(G, data, n=exp_params['n_bisection'])
             print('Pruning with mst...')
-            pruned_mst = prune_mst(G_orc, data, exp_params['mst_thresh'])
+            pruned_mst = prune_mst(G, data, exp_params['mst_thresh'])
             print('Pruning with density...')
-            pruned_density = prune_density(G_orc, data, exp_params['density_thresh'])
+            pruned_density = prune_density(G, data, exp_params['density_thresh'])
             print('Pruning with distance...')
-            pruned_distance = prune_distance(G_orc, data, exp_params['distance_thresh'])
+            pruned_distance = prune_distance(G, data, exp_params['distance_thresh'])
 
             # get number of good edges removed, number of bad edges removed for each meth
-            percent_good_removed, percent_bad_removed = compute_metrics(edge_labels, pruned_orcml['preserved_edges'])
-            percent_good_total_orcml.append(percent_good_removed)
-            percent_bad_total_orcml.append(percent_bad_removed)
-            print(f'orcml: {100*percent_good_removed:.2f}% good edges removed, {100*percent_bad_removed:.2f}% bad edges removed')
+            percent_good_removed, percent_bad_removed = compute_metrics(edge_labels, return_dict['non_shortcut_edges'])
+            percent_good_total_orcmanl.append(percent_good_removed)
+            percent_bad_total_orcmanl.append(percent_bad_removed)
+            print(f'orcmanl: {100*percent_good_removed:.2f}% good edges removed, {100*percent_bad_removed:.2f}% bad edges removed')
 
             percent_good_removed, percent_bad_removed = compute_metrics(edge_labels, pruned_orc['preserved_edges'])
             percent_good_total_orc.append(percent_good_removed)
@@ -536,13 +526,13 @@ class TwoDimPruningExperiment:
         # plot results for last run
         if experiment_name is not None:
             # save metrics
-            orcml_metrics = {
-                'orcml_lda': exp_params['lda'],
-                'orcml_delta': exp_params['delta'],
-                'percent_good_total_mean': np.mean(percent_good_total_orcml),
-                'percent_good_total_std': np.std(percent_good_total_orcml),
-                'percent_bad_total_mean': np.mean(percent_bad_total_orcml),
-                'percent_bad_total_std': np.std(percent_bad_total_orcml),
+            orcmanl_metrics = {
+                'orcmanl_lda': exp_params['lda'],
+                'orcmanl_delta': exp_params['delta'],
+                'percent_good_total_mean': np.mean(percent_good_total_orcmanl),
+                'percent_good_total_std': np.std(percent_good_total_orcmanl),
+                'percent_bad_total_mean': np.mean(percent_bad_total_orcmanl),
+                'percent_bad_total_std': np.std(percent_bad_total_orcmanl),
             }
 
             orc_metrics = {
@@ -588,8 +578,8 @@ class TwoDimPruningExperiment:
             metrics = {
                 'num_trials': n_iter,
                 'seed': seed,
-                'k-NN, k': exp_params['k'],
-                'orcml': orcml_metrics,
+                'k-NN, k': exp_params['n_neighbors'],
+                'orcmanl': orcmanl_metrics,
                 'orc': orc_metrics,
                 'bisection': bisection_metrics,
                 'mst': mst_metrics,

@@ -1,7 +1,5 @@
 import numpy as np
-import scipy
-
-from src.orcml import *
+from src.orcmanl import *
 
 def compute_metrics(edge_labels, preserved_edges, percent=True):
     """ 

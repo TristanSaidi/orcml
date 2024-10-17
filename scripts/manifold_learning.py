@@ -1,11 +1,12 @@
 import os
-from src.data import *
-from src.embeddings import *
-from src.orcml import *
-from src.plotting import *
-from src.eval_utils import *
-from src.baselines import *
-from official_experiments.experiments import *
+from data.data import *
+from src.experiments.embeddings import *
+from src.orcmanl import *
+from src.utils.plotting import *
+from src.utils.eval_utils import *
+from src.utils.graph_utils import *
+from src.experiments.utils.exp_utils import *
+from src.experiments.baselines import *
 import datetime
 
 if __name__ == '__main__':
@@ -39,17 +40,17 @@ if __name__ == '__main__':
     for hole in [True, False]:
         return_dict = swiss_roll(n_points=n_points, noise=noise, noise_thresh=noise_thresh, supersample=True, dim=3, hole=hole)
         swiss_roll_data, color, cluster, swiss_roll_supersample, subsample_indices = return_dict['data'], return_dict['color'], return_dict['cluster'], return_dict['data_supersample'], return_dict['subsample_indices']
-        return_dict = get_pruned_unpruned_graph(swiss_roll_data, exp_params)
-        G_original, A_original, G_orcml, A_orcml = return_dict['G_original'], return_dict['A_original'], return_dict['G_orcml'], return_dict['A_orcml']
+        return_dict = prune_helper(swiss_roll_data, exp_params)
+        G_original, A_original, G_orcmanl, A_orcmanl = return_dict['G_original'], return_dict['A_original'], return_dict['G_orcmanl'], return_dict['A_orcmanl']
 
         Y_umap_original = UMAP(A_original, n_neighbors=exp_params['n_neighbors'], n_components=2)
         plot_emb(Y_umap_original, color, title=None)
         plt.savefig(f'{save_dir}/umap_original_hole_{hole}.png')
         plt.close()
 
-        Y_umap_orcml = UMAP(A_orcml, n_neighbors=exp_params['n_neighbors'], n_components=2)
-        plot_emb(Y_umap_orcml, color[list(G_orcml.nodes())], title=None)
-        plt.savefig(f'{save_dir}/umap_orcml_hole_{hole}.png')
+        Y_umap_orcmanl = UMAP(A_orcmanl, n_neighbors=exp_params['n_neighbors'], n_components=2)
+        plot_emb(Y_umap_orcmanl, color[list(G_orcmanl.nodes())], title=None)
+        plt.savefig(f'{save_dir}/umap_orcmanl_hole_{hole}.png')
         plt.close()
 
 
@@ -77,8 +78,8 @@ if __name__ == '__main__':
         print(f'\nRunning manifold learning experiments for the Swiss {"Roll" if not hole else "Hole"}\n')
         return_dict = swiss_roll(n_points=n_points, noise=noise, noise_thresh=noise_thresh, supersample=True, dim=3, hole=hole)
         swiss_roll_data, color, cluster, swiss_roll_supersample, subsample_indices = return_dict['data'], return_dict['color'], return_dict['cluster'], return_dict['data_supersample'], return_dict['subsample_indices']
-        return_dict = get_pruned_unpruned_graph(swiss_roll_data, exp_params)
-        G_original, A_original, G_orcml, A_orcml = return_dict['G_original'], return_dict['A_original'], return_dict['G_orcml'], return_dict['A_orcml']
+        return_dict = prune_helper(swiss_roll_data, exp_params)
+        G_original, A_original, G_orcmanl, A_orcmanl = return_dict['G_original'], return_dict['A_original'], return_dict['G_orcmanl'], return_dict['A_orcmanl']
 
         # plot the data
         # 3D plot with matplotlib and no axes and rotated
@@ -110,18 +111,18 @@ if __name__ == '__main__':
         plt.close()
 
         # might need to manually pick the eigenvectors because of the REP
-        Y_lle_orcml = lle(A_orcml, swiss_roll_data[list(G_orcml)], n_neighbors=exp_params['n_neighbors'], n_components=3)
+        Y_lle_orcmanl = lle(A_orcmanl, swiss_roll_data[list(G_orcmanl)], n_neighbors=exp_params['n_neighbors'], n_components=3)
         
-        plot_emb(Y_lle_orcml[:, [0,1]], color[list(G_orcml)], title=None)
-        plt.savefig(f'{save_dir}/lle_orcml_hole_{hole}_evecs_0_1.png')
+        plot_emb(Y_lle_orcmanl[:, [0,1]], color[list(G_orcmanl)], title=None)
+        plt.savefig(f'{save_dir}/lle_orcmanl_hole_{hole}_evecs_0_1.png')
         plt.close()
 
-        plot_emb(Y_lle_orcml[:, [0,2]], color[list(G_orcml)], title=None)
-        plt.savefig(f'{save_dir}/lle_orcml_hole_{hole}_evecs_0_2.png')
+        plot_emb(Y_lle_orcmanl[:, [0,2]], color[list(G_orcmanl)], title=None)
+        plt.savefig(f'{save_dir}/lle_orcmanl_hole_{hole}_evecs_0_2.png')
         plt.close()
 
-        plot_emb(Y_lle_orcml[:, [1, 2]], color[list(G_orcml)], title=None)
-        plt.savefig(f'{save_dir}/lle_orcml_hole_{hole}_evecs_1_2.png')
+        plot_emb(Y_lle_orcmanl[:, [1, 2]], color[list(G_orcmanl)], title=None)
+        plt.savefig(f'{save_dir}/lle_orcmanl_hole_{hole}_evecs_1_2.png')
         plt.close()
 
         print('Running Isomap')
@@ -130,9 +131,9 @@ if __name__ == '__main__':
         plt.savefig(f'{save_dir}/isomap_original_hole_{hole}.png')
         plt.close()
 
-        Y_isomap_orcml = isomap(A_orcml, n_components=2)
-        plot_emb(Y_isomap_orcml, color[list(G_orcml)], title=None)
-        plt.savefig(f'{save_dir}/isomap_orcml_hole_{hole}.png')
+        Y_isomap_orcmanl = isomap(A_orcmanl, n_components=2)
+        plot_emb(Y_isomap_orcmanl, color[list(G_orcmanl)], title=None)
+        plt.savefig(f'{save_dir}/isomap_orcmanl_hole_{hole}.png')
         plt.close()
 
         print('Running Spectral Embedding')
@@ -152,18 +153,18 @@ if __name__ == '__main__':
         plt.close()
 
         # might need to manually pick the eigenvectors because of the REP
-        Y_spectral_orcml = spectral_embedding(A_orcml, n_components=3)
+        Y_spectral_orcmanl = spectral_embedding(A_orcmanl, n_components=3)
 
-        plot_emb(Y_spectral_orcml[:, [0,1]], color[list(G_orcml)], title=None)
-        plt.savefig(f'{save_dir}/spectral_orcml_hole_{hole}_evecs_0_1.png')
+        plot_emb(Y_spectral_orcmanl[:, [0,1]], color[list(G_orcmanl)], title=None)
+        plt.savefig(f'{save_dir}/spectral_orcmanl_hole_{hole}_evecs_0_1.png')
         plt.close()
 
-        plot_emb(Y_spectral_orcml[:, [0,2]], color[list(G_orcml)], title=None)
-        plt.savefig(f'{save_dir}/spectral_orcml_hole_{hole}_evecs_0_2.png')
+        plot_emb(Y_spectral_orcmanl[:, [0,2]], color[list(G_orcmanl)], title=None)
+        plt.savefig(f'{save_dir}/spectral_orcmanl_hole_{hole}_evecs_0_2.png')
         plt.close()
 
-        plot_emb(Y_spectral_orcml[:, [1,2]], color[list(G_orcml)], title=None)
-        plt.savefig(f'{save_dir}/spectral_orcml_hole_{hole}_evecs_1_2.png')
+        plot_emb(Y_spectral_orcmanl[:, [1,2]], color[list(G_orcmanl)], title=None)
+        plt.savefig(f'{save_dir}/spectral_orcmanl_hole_{hole}_evecs_1_2.png')
         plt.close()
 
 
@@ -173,15 +174,15 @@ if __name__ == '__main__':
             print('Running t-SNE')
             return_dict = swiss_roll(n_points=n_points, noise=noise, noise_thresh=noise_thresh, supersample=True, dim=3, hole=hole)
             swiss_roll_data, color, cluster, swiss_roll_supersample, subsample_indices = return_dict['data'], return_dict['color'], return_dict['cluster'], return_dict['data_supersample'], return_dict['subsample_indices']
-            return_dict = get_pruned_unpruned_graph(swiss_roll_data, exp_params)
-            G_original, A_original, G_orcml, A_orcml = return_dict['G_original'], return_dict['A_original'], return_dict['G_orcml'], return_dict['A_orcml']
+            return_dict = prune_helper(swiss_roll_data, exp_params)
+            G_original, A_original, G_orcmanl, A_orcmanl = return_dict['G_original'], return_dict['A_original'], return_dict['G_orcmanl'], return_dict['A_orcmanl']
 
             Y_tsne_original = tsne(A_original, n_components=2)
             plot_emb(Y_tsne_original, color, title=None)
             plt.savefig(f'{save_dir}/tsne_original_hole_{hole}_trial_{trial}.png')
             plt.close()
 
-            Y_tsne_orcml = tsne(A_orcml, n_components=2)
-            plot_emb(Y_tsne_orcml, color[list(G_orcml)], title=None)
-            plt.savefig(f'{save_dir}/tsne_orcml_hole_{hole}_trial_{trial}.png')
+            Y_tsne_orcmanl = tsne(A_orcmanl, n_components=2)
+            plot_emb(Y_tsne_orcmanl, color[list(G_orcmanl)], title=None)
+            plt.savefig(f'{save_dir}/tsne_orcmanl_hole_{hole}_trial_{trial}.png')
             plt.close()

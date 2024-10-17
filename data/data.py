@@ -1,5 +1,5 @@
 from sklearn import datasets
-from src.manifold import *
+from data.manifold import *
 import numpy as np
 # Data generation functions
 
