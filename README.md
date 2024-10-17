@@ -4,7 +4,7 @@
 This repository contains the official implementation of ORC-ManL, an algorithm that uses discrete graph curvature to prune nearest-neighbor graphs. Our paper presenting this algorithm can be viewed here: https://arxiv.org/abs/2410.01149.
 
 <div align="center">
-  <img src="https://github.com/TristanSaidi/orcml/blob/cleanup/demo.gif" alt="Demo GIF">
+  <img src="https://github.com/TristanSaidi/orcml/blob/main/demo.gif" alt="Demo GIF">
 </div>
 
 ## Requirements
