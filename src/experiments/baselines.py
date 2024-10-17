@@ -57,7 +57,7 @@ def prune_random(G, data, p):
     }
 
 
-def prune_orc(G, delta, X, weight="unweighted_dist", verbose=False):
+def prune_orc(G, delta, X, verbose=False):
     """
     Prune the graph based on a ORC threshold. Adjust the node coordinates and colors accordingly.
     Parameters
@@ -77,16 +77,15 @@ def prune_orc(G, delta, X, weight="unweighted_dist", verbose=False):
     # bookkeeping
     num_removed_edges = 0
 
-    threshold = -1 + 2*(2-2*delta) # threshold for the Ollivier-Ricci curvature
+    threshold = -1 + 4*(1-delta) # threshold for the Ollivier-Ricci curvature
     preserved_edges = []
     for idx, (i, j, d) in enumerate(G.edges(data=True)):
         if d['ricciCurvature'] > threshold:
-            G_pruned.add_edge(i, j, weight=d[weight])
+            G_pruned.add_edge(i, j, weight=d["weight"])
             preserved_nodes.add(i)
             preserved_nodes.add(j)
             preserved_edges.append(idx)
             G_pruned[i][j]['ricciCurvature'] = d['ricciCurvature']
-            G_pruned[i][j]['wassersteinDistance'] = d['wassersteinDistance']
         else:
             num_removed_edges += 1
 

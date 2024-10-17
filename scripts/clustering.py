@@ -1,11 +1,12 @@
 import os
-from src.data import *
-from src.embeddings import *
-from src.orcml import *
-from src.plotting import *
-from src.eval_utils import *
-from src.baselines import *
-from official_experiments.experiments import *
+from data.data import *
+from src.experiments.embeddings import *
+from src.orcmanl import *
+from src.utils.plotting import *
+from src.utils.eval_utils import *
+from src.utils.graph_utils import *
+from src.experiments.utils.exp_utils import *
+from src.experiments.baselines import *
 import datetime
 from sklearn import metrics
 
@@ -46,8 +47,8 @@ if __name__ == '__main__':
 
     return_dict = concentric_circles(n_points, factor, noise, noise_threshold)
     circles, cluster, circles_supersample, subsample_indices = return_dict['data'], return_dict['cluster'], return_dict['data_supersample'], return_dict['subsample_indices']
-    return_dict = get_pruned_unpruned_graph(circles, exp_params)
-    G_original, A_original, G_orcml, A_orcml = return_dict['G_original'], return_dict['A_original'], return_dict['G_orcml'], return_dict['A_orcml']
+    return_dict = prune_helper(circles, exp_params)
+    G_original, A_original, G_orcmanl, A_orcmanl = return_dict['G_original'], return_dict['A_original'], return_dict['G_orcmanl'], return_dict['A_orcmanl']
 
     labels = get_edge_labels(
         G_original,
@@ -55,29 +56,29 @@ if __name__ == '__main__':
     )
     percent_good_removed, percent_bad_removed = compute_metrics(
         labels,
-        return_dict['preserved_edges'],
+        return_dict['non_shortcut_edges'],
     )
     print(f'Concentric Circles: {percent_good_removed*100} percent good edges removed, {percent_bad_removed*100} percent bad edges removed')
 
     emb_original = spectral_embedding(A_original, n_components=1)
-    emb_orcml = spectral_embedding(A_orcml, n_components=1)
+    emb_orcmanl = spectral_embedding(A_orcmanl, n_components=1)
 
     labels_original = k_means(emb_original, 2)
-    labels_orcml = k_means(emb_orcml, 2)
+    labels_orcmanl = k_means(emb_orcmanl, 2)
 
     rand_index_original = metrics.adjusted_rand_score(cluster, labels_original)
-    rand_index_orcml = metrics.adjusted_rand_score(cluster[G_orcml.nodes()], labels_orcml)
+    rand_index_orcmanl = metrics.adjusted_rand_score(cluster[G_orcmanl.nodes()], labels_orcmanl)
 
     print(f'Concentric Circles unpruned ARI: {rand_index_original}')
-    print(f'Concentric Circles ORCML ARI: {rand_index_orcml}')
+    print(f'Concentric Circles orcmanl ARI: {rand_index_orcmanl}')
 
     plot_graph_2D(circles, G_original, title=None, node_color=labels_original[G_original.nodes()], node_size=2, edge_width=0.25)
     plt.savefig(f'{save_dir}/original_clusters_concentric_circles.png', dpi=1000)
 
 
-    reverse_indices = np.array([np.where(np.array(list(G_orcml)) == i)[0][0] for i in range(len(G_orcml.nodes()))])
-    plot_graph_2D(circles, G_original, title=None, node_color=labels_orcml[reverse_indices][G_original.nodes()], node_size=2, edge_width=0.25)
-    plt.savefig(f'{save_dir}/orcml_clusters_concentric_circles.png', dpi=1000)
+    reverse_indices = np.array([np.where(np.array(list(G_orcmanl)) == i)[0][0] for i in range(len(G_orcmanl.nodes()))])
+    plot_graph_2D(circles, G_original, title=None, node_color=labels_orcmanl[reverse_indices][G_original.nodes()], node_size=2, edge_width=0.25)
+    plt.savefig(f'{save_dir}/orcmanl_clusters_concentric_circles.png', dpi=1000)
 
     ############################## Concentric Circles ##############################
 
@@ -97,8 +98,8 @@ if __name__ == '__main__':
     save_dir = f'./outputs/official_experiments/{experiment_name}/clustering/concentric_hyperboloids'
     os.makedirs(save_dir, exist_ok=True)
 
-    return_dict = get_pruned_unpruned_graph(hyperboloid_data, exp_params)
-    G_original, A_original, G_orcml, A_orcml = return_dict['G_original'], return_dict['A_original'], return_dict['G_orcml'], return_dict['A_orcml']
+    return_dict = prune_helper(hyperboloid_data, exp_params)
+    G_original, A_original, G_orcmanl, A_orcmanl = return_dict['G_original'], return_dict['A_original'], return_dict['G_orcmanl'], return_dict['A_orcmanl']
 
     labels = get_edge_labels(
         G_original,
@@ -106,32 +107,32 @@ if __name__ == '__main__':
     )
     percent_good_removed, percent_bad_removed = compute_metrics(
         labels,
-        return_dict['preserved_edges'],
+        return_dict['non_shortcut_edges'],
     )
     print(f'Hyperboloids: {percent_good_removed*100} percent good edges removed, {percent_bad_removed*100} percent bad edges removed')
 
     emb_original = spectral_embedding(A_original, n_components=1)
-    emb_orcml = spectral_embedding(A_orcml, n_components=1)
+    emb_orcmanl = spectral_embedding(A_orcmanl, n_components=1)
 
     labels_original = k_means(emb_original, 2)
-    labels_orcml = k_means(emb_orcml, 2)
+    labels_orcmanl = k_means(emb_orcmanl, 2)
 
     rand_index_original = metrics.adjusted_rand_score(cluster, labels_original)
-    rand_index_orcml = metrics.adjusted_rand_score(cluster[G_orcml.nodes()], labels_orcml)
+    rand_index_orcmanl = metrics.adjusted_rand_score(cluster[G_orcmanl.nodes()], labels_orcmanl)
 
     print(f'Hyperboloids unpruned ARI: {rand_index_original}')
-    print(f'Hyperboloids ORCML ARI: {rand_index_orcml}')
+    print(f'Hyperboloids orcmanl ARI: {rand_index_orcmanl}')
 
     # map labels to css code for red (#FF5733) and purple (#7A33FF)
     labels_original = np.array(['#FF5733' if i == 0 else '#7A33FF' for i in labels_original])
-    labels_orcml = np.array(['#FF5733' if i == 0 else '#7A33FF' for i in labels_orcml])
+    labels_orcmanl = np.array(['#FF5733' if i == 0 else '#7A33FF' for i in labels_orcmanl])
 
     fig = plot_graph_3D(hyperboloid_data, G_original, title=None, node_color=labels_original, node_size=3, edge_width=0.5)
     fig.write_image(f'{save_dir}/original_hyperboloids_clusters.png', width=1200, height=1200, scale=10) 
     
-    reverse_indices = np.array([np.where(np.array(list(G_orcml)) == i)[0][0] for i in range(len(G_orcml.nodes()))])
-    fig = plot_graph_3D(hyperboloid_data, G_original, title=None, node_color=labels_orcml[reverse_indices], node_size=3, edge_width=0.5)
-    fig.write_image(f'{save_dir}/orcml_hyperboloids_clusters.png', width=1200, height=1200, scale=10) 
+    reverse_indices = np.array([np.where(np.array(list(G_orcmanl)) == i)[0][0] for i in range(len(G_orcmanl.nodes()))])
+    fig = plot_graph_3D(hyperboloid_data, G_original, title=None, node_color=labels_orcmanl[reverse_indices], node_size=3, edge_width=0.5)
+    fig.write_image(f'{save_dir}/orcmanl_hyperboloids_clusters.png', width=1200, height=1200, scale=10) 
     ############################## Hyperboloids ##############################
 
     ############################## Moons ##############################
@@ -151,8 +152,8 @@ if __name__ == '__main__':
     save_dir = f'./outputs/official_experiments/{experiment_name}/clustering/moons'
     os.makedirs(save_dir, exist_ok=True)
 
-    return_dict = get_pruned_unpruned_graph(moons_data, exp_params)
-    G_original, A_original, G_orcml, A_orcml = return_dict['G_original'], return_dict['A_original'], return_dict['G_orcml'], return_dict['A_orcml']
+    return_dict = prune_helper(moons_data, exp_params)
+    G_original, A_original, G_orcmanl, A_orcmanl = return_dict['G_original'], return_dict['A_original'], return_dict['G_orcmanl'], return_dict['A_orcmanl']
 
     labels = get_edge_labels(
         G_original,
@@ -160,28 +161,28 @@ if __name__ == '__main__':
     )
     percent_good_removed, percent_bad_removed = compute_metrics(
         labels,
-        return_dict['preserved_edges'],
+        return_dict['non_shortcut_edges'],
     )
     print(f'Moons: {percent_good_removed*100} percent good edges removed, {percent_bad_removed*100} percent bad edges removed')
 
     emb_original = spectral_embedding(A_original, n_components=1)
-    emb_orcml = spectral_embedding(A_orcml, n_components=1)
+    emb_orcmanl = spectral_embedding(A_orcmanl, n_components=1)
 
     labels_original = k_means(emb_original, 2)
-    labels_orcml = k_means(emb_orcml, 2)
+    labels_orcmanl = k_means(emb_orcmanl, 2)
 
     rand_index_original = metrics.adjusted_rand_score(cluster, labels_original)
-    rand_index_orcml = metrics.adjusted_rand_score(cluster[G_orcml.nodes()], labels_orcml)
+    rand_index_orcmanl = metrics.adjusted_rand_score(cluster[G_orcmanl.nodes()], labels_orcmanl)
     
     print(f'Moons unpruned ARI: {rand_index_original}')
-    print(f'Moons ORCML ARI: {rand_index_orcml}')
+    print(f'Moons orcmanl ARI: {rand_index_orcmanl}')
 
     plot_graph_2D(moons_data, G_original, title=None, node_color=labels_original[G_original.nodes()], node_size=2, edge_width=0.25)
     plt.savefig(f'{save_dir}/original_clusters_moons.png', dpi=1000)
 
-    reverse_indices = np.array([np.where(np.array(list(G_orcml)) == i)[0][0] for i in range(len(G_orcml.nodes()))])
-    plot_graph_2D(moons_data, G_original, title=None, node_color=labels_orcml[reverse_indices][G_original.nodes()], node_size=2, edge_width=0.25)
-    plt.savefig(f'{save_dir}/orcml_clusters_moons.png', dpi=1000)      
+    reverse_indices = np.array([np.where(np.array(list(G_orcmanl)) == i)[0][0] for i in range(len(G_orcmanl.nodes()))])
+    plot_graph_2D(moons_data, G_original, title=None, node_color=labels_orcmanl[reverse_indices][G_original.nodes()], node_size=2, edge_width=0.25)
+    plt.savefig(f'{save_dir}/orcmanl_clusters_moons.png', dpi=1000)      
     ############################## Moons ##############################
 
     ############################## Quadratics ##############################
@@ -202,8 +203,8 @@ if __name__ == '__main__':
     save_dir = f'./outputs/official_experiments/{experiment_name}/clustering/quadratics'
     os.makedirs(save_dir, exist_ok=True)
 
-    return_dict = get_pruned_unpruned_graph(quadratics_data, exp_params)
-    G_original, A_original, G_orcml, A_orcml = return_dict['G_original'], return_dict['A_original'], return_dict['G_orcml'], return_dict['A_orcml']
+    return_dict = prune_helper(quadratics_data, exp_params)
+    G_original, A_original, G_orcmanl, A_orcmanl = return_dict['G_original'], return_dict['A_original'], return_dict['G_orcmanl'], return_dict['A_orcmanl']
 
     labels = get_edge_labels(
         G_original,
@@ -211,26 +212,26 @@ if __name__ == '__main__':
     )
     percent_good_removed, percent_bad_removed = compute_metrics(
         labels,
-        return_dict['preserved_edges'],
+        return_dict['non_shortcut_edges'],
     )
     print(f'Quadratics: {percent_good_removed*100} percent good edges removed, {percent_bad_removed*100} percent bad edges removed')
 
     emb_original = spectral_embedding(A_original, n_components=1)
-    emb_orcml = spectral_embedding(A_orcml, n_components=1)
+    emb_orcmanl = spectral_embedding(A_orcmanl, n_components=1)
 
     labels_original = k_means(emb_original, 2)
-    labels_orcml = k_means(emb_orcml, 2)
+    labels_orcmanl = k_means(emb_orcmanl, 2)
 
     rand_index_original = metrics.adjusted_rand_score(cluster, labels_original)
-    rand_index_orcml = metrics.adjusted_rand_score(cluster[G_orcml.nodes()], labels_orcml)
+    rand_index_orcmanl = metrics.adjusted_rand_score(cluster[G_orcmanl.nodes()], labels_orcmanl)
 
     print(f'Quadratics unpruned ARI: {rand_index_original}')
-    print(f'Quadratics ORCML ARI: {rand_index_orcml}')
+    print(f'Quadratics orcmanl ARI: {rand_index_orcmanl}')
 
     plot_graph_2D(quadratics_data, G_original, title=None, node_color=labels_original[G_original.nodes()], node_size=2, edge_width=0.25)
     plt.savefig(f'{save_dir}/original_clusters_quadratics.png', dpi=1000)
 
-    reverse_indices = np.array([np.where(np.array(list(G_orcml)) == i)[0][0] for i in range(len(G_orcml.nodes()))])
-    plot_graph_2D(quadratics_data, G_original, title=None, node_color=labels_orcml[reverse_indices][G_original.nodes()], node_size=2, edge_width=0.25)
-    plt.savefig(f'{save_dir}/orcml_clusters_quadratics.png', dpi=1000)
+    reverse_indices = np.array([np.where(np.array(list(G_orcmanl)) == i)[0][0] for i in range(len(G_orcmanl.nodes()))])
+    plot_graph_2D(quadratics_data, G_original, title=None, node_color=labels_orcmanl[reverse_indices][G_original.nodes()], node_size=2, edge_width=0.25)
+    plt.savefig(f'{save_dir}/orcmanl_clusters_quadratics.png', dpi=1000)
     ############################## Quadratics ##############################

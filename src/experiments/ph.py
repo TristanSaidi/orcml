@@ -1,6 +1,5 @@
 from scipy.sparse.csgraph import shortest_path
 from gph.python import ripser_parallel
-import gudhi
 from gudhi.wasserstein import wasserstein_distance
 import numpy as np
 

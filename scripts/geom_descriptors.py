@@ -1,12 +1,13 @@
 import os
-from src.data import *
-from src.embeddings import *
-from src.orcml import *
-from src.plotting import *
-from src.eval_utils import *
-from src.baselines import *
-from src.ScalarCurvature import *
-from official_experiments.experiments import *
+from data.data import *
+from src.experiments.embeddings import *
+from src.orcmanl import *
+from src.utils.plotting import *
+from src.utils.eval_utils import *
+from src.utils.graph_utils import *
+from src.experiments.utils.exp_utils import *
+from src.experiments.baselines import *
+from src.scalar_curvature import *
 import skdim as skd
 import datetime
 
@@ -34,20 +35,20 @@ if __name__ == '__main__':
     return_dict = swiss_roll(n_points=n_points, noise=noise, noise_thresh=noise_thresh, supersample=True, dim=3)
     swiss_roll_data, cluster, swiss_roll_supersample, subsample_indices = return_dict['data'], return_dict['cluster'], return_dict['data_supersample'], return_dict['subsample_indices']
 
-    return_dict = get_pruned_unpruned_graph(swiss_roll_data, exp_params)
-    G_original, A_original, G_orcml, A_orcml = return_dict['G_original'], return_dict['A_original'], return_dict['G_orcml'], return_dict['A_orcml']
+    return_dict = prune_helper(swiss_roll_data, exp_params)
+    G_original, A_original, G_orcmanl, A_orcmanl = return_dict['G_original'], return_dict['A_original'], return_dict['G_orcmanl'], return_dict['A_orcmanl']
 
     Rdist_original = scipy.sparse.csgraph.shortest_path(scipy.sparse.csr_matrix(A_original), directed=False)
     assert np.allclose(Rdist_original, Rdist_original.T), "Distance matrix is not symmetric"
 
-    Rdist_orcml = scipy.sparse.csgraph.shortest_path(scipy.sparse.csr_matrix(A_orcml), directed=False)
-    assert np.allclose(Rdist_orcml, Rdist_orcml.T), "Distance matrix is not symmetric"
+    Rdist_orcmanl = scipy.sparse.csgraph.shortest_path(scipy.sparse.csr_matrix(A_orcmanl), directed=False)
+    assert np.allclose(Rdist_orcmanl, Rdist_orcmanl.T), "Distance matrix is not symmetric"
 
     sce_original = scalar_curvature_est(n=2, Rdist=Rdist_original)
     Ss_original = np.array(sce_original.estimate(rmax=50))
 
-    sce_orcml = scalar_curvature_est(n=2, Rdist=Rdist_orcml)
-    Ss_orcml = np.array(sce_orcml.estimate(rmax=50))
+    sce_orcmanl = scalar_curvature_est(n=2, Rdist=Rdist_orcmanl)
+    Ss_orcmanl = np.array(sce_orcmanl.estimate(rmax=50))
 
     camera = dict(
         up=dict(x=0, y=0, z=1),
@@ -57,16 +58,16 @@ if __name__ == '__main__':
     fig = plot_graph_3D(swiss_roll_data, G_original, title=None, node_color=Ss_original, cmax=0.08, cmin=0.00, camera=camera, node_size=6, edge_width=0.25, opacity=1.0, node_colorbar=True, node_colorbar_title=None)
     fig.write_image(f'{save_dir}/swiss_roll_original_sce.png', width=1200, height=1200, scale=10)
 
-    reverse_indices = np.array([np.where(np.array(list(G_orcml)) == i)[0][0] for i in range(len(G_orcml.nodes()))])
-    fig = plot_graph_3D(swiss_roll_data, G_original, title=None, node_color=Ss_orcml[reverse_indices], cmax=0.08, cmin=0.00, camera=camera, node_size=6, edge_width=0.25, opacity=1.0, node_colorbar=True, node_colorbar_title=None)
-    fig.write_image(f'{save_dir}/swiss_roll_orcml_sce.png', width=1200, height=1200, scale=10)
+    reverse_indices = np.array([np.where(np.array(list(G_orcmanl)) == i)[0][0] for i in range(len(G_orcmanl.nodes()))])
+    fig = plot_graph_3D(swiss_roll_data, G_original, title=None, node_color=Ss_orcmanl[reverse_indices], cmax=0.08, cmin=0.00, camera=camera, node_size=6, edge_width=0.25, opacity=1.0, node_colorbar=True, node_colorbar_title=None)
+    fig.write_image(f'{save_dir}/swiss_roll_orcmanl_sce.png', width=1200, height=1200, scale=10)
 
     base_truth = np.ones(len(swiss_roll_data)) * 0
     mse_original = np.mean((base_truth - Ss_original)**2)
-    mse_orcml = np.mean((base_truth - Ss_orcml[reverse_indices])**2)
+    mse_orcmanl = np.mean((base_truth - Ss_orcmanl[reverse_indices])**2)
 
     print(f'MSE original: {mse_original}')
-    print(f'MSE orcml: {mse_orcml}')
+    print(f'MSE orcmanl: {mse_orcmanl}')
 
     # Swiss Roll: MLE i.d. estimation
     print('\n\nEstimating intrinsic dimension for Swiss Roll...')
@@ -90,30 +91,30 @@ if __name__ == '__main__':
     # fig.show()
 
     ide = skd.id.MLE(n=3, neighborhood_based=True)
-    reverse_indices = np.array([np.where(np.array(list(G_orcml)) == i)[0][0] for i in range(len(G_orcml.nodes()))])
+    reverse_indices = np.array([np.where(np.array(list(G_orcmanl)) == i)[0][0] for i in range(len(G_orcmanl.nodes()))])
 
-    sorted_indices_orcml = np.argsort(Rdist_orcml[reverse_indices][:, reverse_indices], axis=1)[:, 1:n_nbrs+1]
-    sorted_distances_orcml = np.sort(Rdist_orcml[reverse_indices][:, reverse_indices], axis=1)[:, 1:n_nbrs+1]
+    sorted_indices_orcmanl = np.argsort(Rdist_orcmanl[reverse_indices][:, reverse_indices], axis=1)[:, 1:n_nbrs+1]
+    sorted_distances_orcmanl = np.sort(Rdist_orcmanl[reverse_indices][:, reverse_indices], axis=1)[:, 1:n_nbrs+1]
 
-    precomputed_knn_arrays = (sorted_distances_orcml, sorted_indices_orcml)
+    precomputed_knn_arrays = (sorted_distances_orcmanl, sorted_indices_orcmanl)
 
-    pw_orcml, pw_smooth_orcml = ide.fit_transform_pw(swiss_roll_data, precomputed_knn_arrays=precomputed_knn_arrays, n_neighbors=n_nbrs, smooth=True)
+    pw_orcmanl, pw_smooth_orcmanl = ide.fit_transform_pw(swiss_roll_data, precomputed_knn_arrays=precomputed_knn_arrays, n_neighbors=n_nbrs, smooth=True)
     camera = dict(
         up=dict(x=0, y=0, z=1),
         center=dict(x=0.0, y=0, z=0),
         eye=dict(x=0.1, y=1.8, z=0.0)
     )
-    fig = plot_graph_3D(swiss_roll_data, G_original, node_color=pw_smooth_orcml, cmax=3, cmin=2, title=None, node_size=6, edge_width=0.25, opacity=1.0, node_colorbar=True, node_colorbar_title=None, camera=camera)
-    fig.write_image(f'{save_dir}/swiss_roll_orcml_id_mle.png', width=1200, height=1200, scale=10)
+    fig = plot_graph_3D(swiss_roll_data, G_original, node_color=pw_smooth_orcmanl, cmax=3, cmin=2, title=None, node_size=6, edge_width=0.25, opacity=1.0, node_colorbar=True, node_colorbar_title=None, camera=camera)
+    fig.write_image(f'{save_dir}/swiss_roll_orcmanl_id_mle.png', width=1200, height=1200, scale=10)
     # fig.show()
 
     # compute mse between base truth (2) and estimated intrinsic dimension
     base_truth = np.ones(len(swiss_roll_data)) * 2
     mse_original = np.mean((base_truth - pw_smooth_original)**2)
-    mse_orcml = np.mean((base_truth - pw_smooth_orcml)**2)
+    mse_orcmanl = np.mean((base_truth - pw_smooth_orcmanl)**2)
 
     print(f'MSE original: {mse_original}')
-    print(f'MSE orcml: {mse_orcml}')
+    print(f'MSE orcmanl: {mse_orcmanl}')
 
     # adjacent spheres: SCE
     print('\n\nEstimating scalar curvature for adjacent spheres...')
@@ -132,20 +133,20 @@ if __name__ == '__main__':
         'delta': 0.8
     }
 
-    return_dict = get_pruned_unpruned_graph(spheres_data, exp_params)
-    G_original, A_original, G_orcml, A_orcml = return_dict['G_original'], return_dict['A_original'], return_dict['G_orcml'], return_dict['A_orcml']
+    return_dict = prune_helper(spheres_data, exp_params)
+    G_original, A_original, G_orcmanl, A_orcmanl = return_dict['G_original'], return_dict['A_original'], return_dict['G_orcmanl'], return_dict['A_orcmanl']
 
     Rdist_original = scipy.sparse.csgraph.shortest_path(scipy.sparse.csr_matrix(A_original), directed=False)
     assert np.allclose(Rdist_original, Rdist_original.T), "Distance matrix is not symmetric"
 
-    Rdist_orcml = scipy.sparse.csgraph.shortest_path(scipy.sparse.csr_matrix(A_orcml), directed=False)
-    assert np.allclose(Rdist_orcml, Rdist_orcml.T), "Distance matrix is not symmetric"
+    Rdist_orcmanl = scipy.sparse.csgraph.shortest_path(scipy.sparse.csr_matrix(A_orcmanl), directed=False)
+    assert np.allclose(Rdist_orcmanl, Rdist_orcmanl.T), "Distance matrix is not symmetric"
 
     sce_original = scalar_curvature_est(n=2, Rdist=Rdist_original)
     Ss_original = np.array(sce_original.estimate(rmax=5))
 
-    sce_orcml = scalar_curvature_est(n=2, Rdist=Rdist_orcml)
-    Ss_orcml = np.array(sce_orcml.estimate(rmax=5))
+    sce_orcmanl = scalar_curvature_est(n=2, Rdist=Rdist_orcmanl)
+    Ss_orcmanl = np.array(sce_orcmanl.estimate(rmax=5))
 
     camera = dict(
         up=dict(x=0, y=0, z=1),
@@ -156,17 +157,17 @@ if __name__ == '__main__':
     fig = plot_graph_3D(spheres_data, G_original, title=None, node_color=Ss_original, cmax=2, cmin=-1.0, camera=camera, node_size=6, edge_width=0.25, opacity=1.0, node_colorbar=True, node_colorbar_title=None)
     fig.write_image(f'{save_dir}/spheres_original_sce.png', width=1200, height=1200, scale=10)
 
-    reverse_indices = np.array([np.where(np.array(list(G_orcml)) == i)[0][0] for i in range(len(G_orcml.nodes()))])
-    fig = plot_graph_3D(spheres_data, G_original, title=None, node_color=Ss_orcml[reverse_indices], cmax=2, cmin=-1.0, camera=camera, node_size=6, edge_width=0.25, opacity=1.0, node_colorbar=True, node_colorbar_title=None)
-    fig.write_image(f'{save_dir}/spheres_orcml_sce.png', width=1200, height=1200, scale=10)
+    reverse_indices = np.array([np.where(np.array(list(G_orcmanl)) == i)[0][0] for i in range(len(G_orcmanl.nodes()))])
+    fig = plot_graph_3D(spheres_data, G_original, title=None, node_color=Ss_orcmanl[reverse_indices], cmax=2, cmin=-1.0, camera=camera, node_size=6, edge_width=0.25, opacity=1.0, node_colorbar=True, node_colorbar_title=None)
+    fig.write_image(f'{save_dir}/spheres_orcmanl_sce.png', width=1200, height=1200, scale=10)
 
     # mse between base truth (2) and estimated scalar curvature
     base_truth = np.ones(len(spheres_data)) * 2
     mse_original = np.mean((base_truth - Ss_original)**2)
-    mse_orcml = np.mean((base_truth - Ss_orcml[reverse_indices])**2)
+    mse_orcmanl = np.mean((base_truth - Ss_orcmanl[reverse_indices])**2)
 
     print(f'MSE original: {mse_original}')
-    print(f'MSE orcml: {mse_orcml}')
+    print(f'MSE orcmanl: {mse_orcmanl}')
 
 
     ### Intrinsic dimension
@@ -190,23 +191,23 @@ if __name__ == '__main__':
         eye=dict(x=0.1, y=0.0, z=2.8)
     )
 
-    return_dict = get_pruned_unpruned_graph(spheres_data, exp_params)
-    G_original, A_original, G_orcml, A_orcml = return_dict['G_original'], return_dict['A_original'], return_dict['G_orcml'], return_dict['A_orcml']
+    return_dict = prune_helper(spheres_data, exp_params)
+    G_original, A_original, G_orcmanl, A_orcmanl = return_dict['G_original'], return_dict['A_original'], return_dict['G_orcmanl'], return_dict['A_orcmanl']
 
     # get edge labels
     edge_labels = get_edge_labels(
         G_original,
         cluster=data_dict['cluster'],
     )
-    percent_good_removed, percent_bad_removed = compute_metrics(edge_labels, return_dict['preserved_edges'])
+    percent_good_removed, percent_bad_removed = compute_metrics(edge_labels, return_dict['non_shortcut_edges'])
     print(f'Percent good edges removed: {percent_good_removed}')
     print(f'Percent bad edges removed: {percent_bad_removed}')
 
     Rdist_original = scipy.sparse.csgraph.shortest_path(scipy.sparse.csr_matrix(A_original), directed=False)
     assert np.allclose(Rdist_original, Rdist_original.T), "Distance matrix is not symmetric"
 
-    Rdist_orcml = scipy.sparse.csgraph.shortest_path(scipy.sparse.csr_matrix(A_orcml), directed=False)
-    assert np.allclose(Rdist_orcml, Rdist_orcml.T), "Distance matrix is not symmetric"
+    Rdist_orcmanl = scipy.sparse.csgraph.shortest_path(scipy.sparse.csr_matrix(A_orcmanl), directed=False)
+    assert np.allclose(Rdist_orcmanl, Rdist_orcmanl.T), "Distance matrix is not symmetric"
 
     # mle id
     n_nbrs = 200
@@ -231,14 +232,14 @@ if __name__ == '__main__':
     n_nbrs = 200
 
     ide = skd.id.MLE(n=3, neighborhood_based=True)
-    reverse_indices = np.array([np.where(np.array(list(G_orcml)) == i)[0][0] for i in range(len(G_orcml.nodes()))])
+    reverse_indices = np.array([np.where(np.array(list(G_orcmanl)) == i)[0][0] for i in range(len(G_orcmanl.nodes()))])
 
-    sorted_indices_orcml = np.argsort(Rdist_orcml[reverse_indices][:, reverse_indices], axis=1)[:, 1:n_nbrs+1]
-    sorted_distances_orcml = np.sort(Rdist_orcml[reverse_indices][:, reverse_indices], axis=1)[:, 1:n_nbrs+1]
+    sorted_indices_orcmanl = np.argsort(Rdist_orcmanl[reverse_indices][:, reverse_indices], axis=1)[:, 1:n_nbrs+1]
+    sorted_distances_orcmanl = np.sort(Rdist_orcmanl[reverse_indices][:, reverse_indices], axis=1)[:, 1:n_nbrs+1]
 
-    precomputed_knn_arrays = (sorted_distances_orcml, sorted_indices_orcml)
+    precomputed_knn_arrays = (sorted_distances_orcmanl, sorted_indices_orcmanl)
 
-    pw_orcml, pw_smooth_orcml = ide.fit_transform_pw(spheres_data, precomputed_knn_arrays=precomputed_knn_arrays, n_neighbors=n_nbrs, smooth=True)
+    pw_orcmanl, pw_smooth_orcmanl = ide.fit_transform_pw(spheres_data, precomputed_knn_arrays=precomputed_knn_arrays, n_neighbors=n_nbrs, smooth=True)
 
     camera = dict(
         up=dict(x=0, y=0, z=1),
@@ -246,13 +247,13 @@ if __name__ == '__main__':
         eye=dict(x=0.1, y=0.0, z=2.8)
     )
 
-    fig = plot_graph_3D(spheres_data, G_original, node_color=pw_smooth_orcml, cmax=2.2, cmin=1.9, title=None, node_size=6, edge_width=0.25, opacity=1.0, node_colorbar=True, node_colorbar_title=None, camera=camera)
-    fig.write_image(f'{save_dir}/spheres_orcml_id_mle.png', width=1200, height=1200, scale=10)
+    fig = plot_graph_3D(spheres_data, G_original, node_color=pw_smooth_orcmanl, cmax=2.2, cmin=1.9, title=None, node_size=6, edge_width=0.25, opacity=1.0, node_colorbar=True, node_colorbar_title=None, camera=camera)
+    fig.write_image(f'{save_dir}/spheres_orcmanl_id_mle.png', width=1200, height=1200, scale=10)
 
     # compute mse between base truth (2) and estimated intrinsic dimension
     base_truth = np.ones(len(spheres_data)) * 2
     mse_original = np.mean((base_truth - pw_smooth_original)**2)
-    mse_orcml = np.mean((base_truth - pw_smooth_orcml)**2)
+    mse_orcmanl = np.mean((base_truth - pw_smooth_orcmanl)**2)
 
     print(f'MSE original: {mse_original}')
-    print(f'MSE orcml: {mse_orcml}')
+    print(f'MSE orcmanl: {mse_orcmanl}')
