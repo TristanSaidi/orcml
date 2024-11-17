@@ -1,5 +1,6 @@
 import networkx as nx
 import numpy as np
+import time
 from src.utils.graph_utils import *
 
 shortcut_str = "Shortcut Edge Detected: edge {num}\n d_G'(x,y)/effective_eps: {emp_ratio}\n Threshold/effective_eps: {theo_ratio}\n\n"
@@ -80,10 +81,7 @@ class ORCManL(object):
         return_dict = get_nn_graph(self.X, self.exp_params)
         G = return_dict['G']
         self.A = return_dict['A']
-        # compute ORC
-        return_dict = compute_orc(G)
-        self.G = return_dict['G']
-        self.orcs = return_dict['orcs']
+        return G
 
     def fit(self, data, return_self=False):
         """
@@ -97,15 +95,33 @@ class ORCManL(object):
         self : ORCManL
         """
         self.X = data
-        self.build_nnG()
+        # build nearest neighbor graph
+        nng_start = time.time()
+        self.G = self.build_nnG()
+        nng_end = time.time()
+        nng_wall_time = nng_end - nng_start
+        if self.verbose:
+            print(f"Nearest Neighbor Graph built in {nng_wall_time} seconds.")
+        # apply ORCManL algorithm
+        orcmanl_start = time.time()
         self._fit()
+        orcmanl_end = time.time()
+        orcmanl_wall_time = orcmanl_end - orcmanl_start
+        if self.verbose:
+            print(f"ORCManL algorithm completed in {orcmanl_wall_time} seconds.")
         if return_self:
-            return self
+            return self, {"nng_wall_time": nng_wall_time, "orcmanl_wall_time": orcmanl_wall_time}
+        return {"nng_wall_time": nng_wall_time, "orcmanl_wall_time": orcmanl_wall_time}
             
     def _fit(self):
         """ 
         Run the ORCManL algorithm.
         """
+        # compute ORC
+        return_dict = compute_orc(self.G)
+        self.G = return_dict['G']
+        self.orcs = return_dict['orcs']
+        # construct candidate set
         self.C = []
         self._construct_C()
         if self.verbose:
